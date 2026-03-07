@@ -35,7 +35,9 @@
       "Bash(git commit -m \"改造为云端存储：使用 Vercel KV 替代 localStorage\n\n- 添加 API 端点 /api/data 用于读写数据\n- 修改 store 为异步操作，所有数据变更自动保存到云端\n- 添加加载状态和错误处理\n- 多设备可共享同一份数据\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\")",
       "Bash(git push)",
       "Bash(npm uninstall @vercel/kv && npm install --cache /tmp/npm-cache @vercel/blob)",
-      "Bash(git add -A && git commit -m \"切换到 Vercel Blob 存储\n\n- 使用 @vercel/blob 替代 @vercel/kv\n- 数据存储为 JSON 文件\n- 更符合文件存储的需求\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\" && git push)"
+      "Bash(git add -A && git commit -m \"切换到 Vercel Blob 存储\n\n- 使用 @vercel/blob 替代 @vercel/kv\n- 数据存储为 JSON 文件\n- 更符合文件存储的需求\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\" && git push)",
+      "Bash(git add vercel.json && git commit -m \"修复 SPA 路由 404 问题\n\n添加 rewrites 规则，将所有路由指向 index.html\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\" && git push)",
+      "Bash(git add -A && git commit -m \"修复数据保存问题\n\n- 改进 Blob 读写逻辑，使用 list 获取最新数据\n- 写入前删除旧 blob，避免重复\n- CheckIn 组件改为 async/await 确保保存完成\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\" && git push)"
     ]
   }
 }

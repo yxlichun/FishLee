@@ -9,11 +9,11 @@ export default function CheckIn() {
   const [duration, setDuration] = useState(60);
   const [phaseId, setPhaseId] = useState(1);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
 
-    addCheckIn({ content, duration, phaseId });
+    await addCheckIn({ content, duration, phaseId });
     setContent('');
     setDuration(60);
   };
