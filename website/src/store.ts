@@ -37,7 +37,14 @@ export const useStore = create<AppStore>((set, get) => ({
       const response = await fetch(API_URL);
       if (!response.ok) throw new Error('Failed to load data');
       const data = await response.json();
-      set({ ...data, isLoading: false });
+      set({
+        taskProgress: data.taskProgress || {},
+        checkIns: data.checkIns || [],
+        notes: data.notes || [],
+        bookmarks: data.bookmarks || [],
+        inspirations: data.inspirations || [],
+        isLoading: false,
+      });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
     }
