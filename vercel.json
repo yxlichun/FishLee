@@ -1,5 +1,11 @@
 {
   "buildCommand": "cd website && npm install && npm run build",
   "outputDirectory": "website/dist",
-  "installCommand": "cd website && npm install --cache /tmp/npm-cache"
+  "installCommand": "cd website && npm install --cache /tmp/npm-cache",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
