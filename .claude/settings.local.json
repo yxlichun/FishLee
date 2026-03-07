@@ -25,7 +25,13 @@
       "Bash(npx vercel login)",
       "Bash(gh auth status 2>&1)",
       "Bash(git init)",
-      "Bash(git add -A && git commit -m \"Initial commit: AI PM learning path website with inspirations feature\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\")"
+      "Bash(git add -A && git commit -m \"Initial commit: AI PM learning path website with inspirations feature\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\")",
+      "Bash(git remote add origin https://github.com/yxlichun/FishLee.git && git branch -M main && git push -u origin main)",
+      "Bash(git add vercel.json && git commit -m \"Add Vercel configuration\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\" && git push)",
+      "Bash(cd /Users/sftc/Documents/code/FishLee/website && npm install --cache /tmp/npm-cache @vercel/kv)",
+      "Bash(npm install --cache /tmp/npm-cache --save-dev @vercel/node)",
+      "Bash(npx tsc --noEmit 2>&1)",
+      "Bash(git add -A && git status)"
     ]
   }
 }
