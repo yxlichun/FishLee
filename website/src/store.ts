@@ -227,6 +227,7 @@ export const useStore = create<AppStore>()(
 }),
 {
   name: STORAGE_KEY,
+  version: 1,
   partialize: (state) => ({
     taskProgress: state.taskProgress,
     checkIns: state.checkIns,
@@ -234,6 +235,23 @@ export const useStore = create<AppStore>()(
     bookmarks: state.bookmarks,
     inspirations: state.inspirations,
   }),
+  migrate: (persistedState: any, version: number) => {
+    // 迁移旧的 CheckIn 数据格式
+    if (version === 0 && persistedState?.checkIns) {
+      persistedState.checkIns = persistedState.checkIns.map((checkIn: any) => {
+        // 如果是旧格式（有 date 字段但没有 id 和 timestamp）
+        if (checkIn.date && !checkIn.id && !checkIn.timestamp) {
+          return {
+            ...checkIn,
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            timestamp: new Date(checkIn.date).toISOString(),
+          };
+        }
+        return checkIn;
+      });
+    }
+    return persistedState;
+  },
 }
 )
 );
