@@ -1,7 +1,9 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { UserData, CheckIn, Note, Bookmark, Inspiration } from './types';
 
 const API_URL = '/api/data';
+const STORAGE_KEY = 'ai-pm-learning-storage';
 
 interface AppStore extends UserData {
   isLoading: boolean;
@@ -22,7 +24,7 @@ interface AppStore extends UserData {
   importData: (jsonString: string) => Promise<void>;
 }
 
-export const useStore = create<AppStore>((set, get) => ({
+export const useStore = create<AppStore>()(persist((set, get) => ({
   taskProgress: {},
   checkIns: [],
   notes: [],
@@ -37,16 +39,23 @@ export const useStore = create<AppStore>((set, get) => ({
       const response = await fetch(API_URL);
       if (!response.ok) throw new Error('Failed to load data');
       const data = await response.json();
-      set({
-        taskProgress: data.taskProgress || {},
-        checkIns: data.checkIns || [],
-        notes: data.notes || [],
-        bookmarks: data.bookmarks || [],
-        inspirations: data.inspirations || [],
-        isLoading: false,
-      });
-    } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
+      // Only update from API if it has actual data (not empty defaults)
+      const hasData = data.checkIns?.length > 0 || data.notes?.length > 0 ||
+        data.bookmarks?.length > 0 || data.inspirations?.length > 0 ||
+        Object.keys(data.taskProgress || {}).length > 0;
+      if (hasData) {
+        set({
+          taskProgress: data.taskProgress || {},
+          checkIns: data.checkIns || [],
+          notes: data.notes || [],
+          bookmarks: data.bookmarks || [],
+          inspirations: data.inspirations || [],
+        });
+      }
+      set({ isLoading: false });
+    } catch {
+      // API failed - localStorage data (from persist middleware) is already loaded
+      set({ isLoading: false });
     }
   },
 
@@ -59,8 +68,8 @@ export const useStore = create<AppStore>((set, get) => ({
         body: JSON.stringify({ taskProgress, checkIns, notes, bookmarks, inspirations }),
       });
       if (!response.ok) throw new Error('Failed to save data');
-    } catch (error) {
-      set({ error: (error as Error).message });
+    } catch {
+      // API save failed - data is still persisted in localStorage via middleware
     }
   },
 
@@ -186,4 +195,13 @@ export const useStore = create<AppStore>((set, get) => ({
       console.error('Failed to import data:', error);
     }
   },
+}), {
+  name: STORAGE_KEY,
+  partialize: (state) => ({
+    taskProgress: state.taskProgress,
+    checkIns: state.checkIns,
+    notes: state.notes,
+    bookmarks: state.bookmarks,
+    inspirations: state.inspirations,
+  }),
 }));
