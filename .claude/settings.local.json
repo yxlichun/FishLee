@@ -38,7 +38,11 @@
       "Bash(git add -A && git commit -m \"切换到 Vercel Blob 存储\n\n- 使用 @vercel/blob 替代 @vercel/kv\n- 数据存储为 JSON 文件\n- 更符合文件存储的需求\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\" && git push)",
       "Bash(git add vercel.json && git commit -m \"修复 SPA 路由 404 问题\n\n添加 rewrites 规则，将所有路由指向 index.html\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\" && git push)",
       "Bash(git add -A && git commit -m \"修复数据保存问题\n\n- 改进 Blob 读写逻辑，使用 list 获取最新数据\n- 写入前删除旧 blob，避免重复\n- CheckIn 组件改为 async/await 确保保存完成\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\" && git push)",
-      "Bash(git add -A && git commit -m \"修复数据加载覆盖 store 方法的问题\n\nloadData 中不能使用展开运算符，会覆盖所有方法\n改为显式设置每个数据字段\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\" && git push)"
+      "Bash(git add -A && git commit -m \"修复数据加载覆盖 store 方法的问题\n\nloadData 中不能使用展开运算符，会覆盖所有方法\n改为显式设置每个数据字段\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\" && git push)",
+      "Bash(cd /Users/sftc/Documents/code/FishLee/website && npm install remark-gfm react-syntax-highlighter @types/react-syntax-highlighter 2>&1 | tail -5)",
+      "Bash(sudo npm install remark-gfm react-syntax-highlighter @types/react-syntax-highlighter 2>&1 | tail -10)",
+      "Bash(npm install --cache /tmp/npm-cache remark-gfm react-syntax-highlighter @types/react-syntax-highlighter 2>&1 | tail -10)",
+      "Bash(git commit -m \"$\\(cat <<'EOF'\nfeat: 学习笔记支持图片上传和 Markdown 富文本预览\n\n- 新增 api/upload.ts：接收图片流上传到 Vercel Blob，返回公开 URL\n- 新增 MarkdownRenderer 组件：支持 GFM（表格、checklist）、代码高亮、图片渲染\n- Notes.tsx 重构：\n  - 编辑器支持编辑/分栏/预览三种视图模式\n  - 支持点击按钮、拖拽、粘贴（Ctrl+V）三种方式插入图片\n  - 开发环境图片转 base64，生产环境上传 Blob\n  - 笔记卡片支持展开/收起查看完整内容\n- vercel.json 添加 /api/* 路由，避免被 SPA rewrite 拦截\n- 安装 remark-gfm、react-syntax-highlighter 依赖\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
