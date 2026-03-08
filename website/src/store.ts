@@ -9,7 +9,9 @@ interface AppStore extends UserData {
   loadData: () => Promise<void>;
   saveData: () => Promise<void>;
   toggleTask: (taskId: string) => Promise<void>;
-  addCheckIn: (checkIn: Omit<CheckIn, 'date'>) => Promise<void>;
+  addCheckIn: (checkIn: Omit<CheckIn, 'id' | 'timestamp'>) => Promise<void>;
+  updateCheckIn: (id: string, updates: Partial<Omit<CheckIn, 'id' | 'timestamp'>>) => Promise<void>;
+  deleteCheckIn: (id: string) => Promise<void>;
   addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateNote: (id: string, updates: Partial<Note>) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
@@ -77,9 +79,29 @@ export const useStore = create<AppStore>((set, get) => ({
   addCheckIn: async (checkIn) => {
     set((state) => ({
       checkIns: [
+        {
+          ...checkIn,
+          id: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+        },
         ...state.checkIns,
-        { ...checkIn, date: new Date().toISOString().split('T')[0] },
       ],
+    }));
+    await get().saveData();
+  },
+
+  updateCheckIn: async (id, updates) => {
+    set((state) => ({
+      checkIns: state.checkIns.map((checkIn) =>
+        checkIn.id === id ? { ...checkIn, ...updates } : checkIn
+      ),
+    }));
+    await get().saveData();
+  },
+
+  deleteCheckIn: async (id) => {
+    set((state) => ({
+      checkIns: state.checkIns.filter((checkIn) => checkIn.id !== id),
     }));
     await get().saveData();
   },

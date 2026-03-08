@@ -28,7 +28,8 @@ export interface Phase {
 }
 
 export interface CheckIn {
-  date: string;
+  id: string;
+  timestamp: string;
   content: string;
   duration: number;
   phaseId: number;

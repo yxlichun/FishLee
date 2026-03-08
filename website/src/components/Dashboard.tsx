@@ -2,7 +2,7 @@ import { useStore } from '../store';
 import { learningPath } from '../data/learningPath';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CheckCircle2, Calendar, FileText, Flame } from 'lucide-react';
-import { differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
 
 export default function Dashboard() {
   const { taskProgress, checkIns, notes } = useStore();
@@ -27,14 +27,27 @@ export default function Dashboard() {
 
   // 计算连续打卡天数
   const sortedCheckIns = [...checkIns].sort((a, b) =>
-    new Date(b.date).getTime() - new Date(a.date).getTime()
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
   let streak = 0;
   const today = new Date();
-  for (let i = 0; i < sortedCheckIns.length; i++) {
-    const checkInDate = new Date(sortedCheckIns[i].date);
-    const daysDiff = differenceInDays(today, checkInDate);
-    if (daysDiff === i) {
+  today.setHours(0, 0, 0, 0);
+
+  // 按日期分组打卡记录
+  const checkInsByDate = new Map<string, boolean>();
+  sortedCheckIns.forEach(checkIn => {
+    const date = new Date(checkIn.timestamp);
+    date.setHours(0, 0, 0, 0);
+    const dateStr = date.toISOString().split('T')[0];
+    checkInsByDate.set(dateStr, true);
+  });
+
+  // 计算连续天数
+  for (let i = 0; i < 365; i++) {
+    const checkDate = new Date(today);
+    checkDate.setDate(checkDate.getDate() - i);
+    const dateStr = checkDate.toISOString().split('T')[0];
+    if (checkInsByDate.has(dateStr)) {
       streak++;
     } else {
       break;
@@ -127,10 +140,15 @@ export default function Dashboard() {
           <p className="text-gray-500 text-center py-8">还没有打卡记录，开始你的学习之旅吧！</p>
         ) : (
           <div className="space-y-3">
-            {sortedCheckIns.slice(0, 5).map((checkIn, index) => (
-              <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                <div className="flex-shrink-0 w-16 text-center">
-                  <p className="text-sm font-medium text-gray-900">{checkIn.date}</p>
+            {sortedCheckIns.slice(0, 5).map((checkIn) => (
+              <div key={checkIn.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex-shrink-0 w-20 text-center">
+                  <p className="text-sm font-medium text-gray-900">
+                    {format(new Date(checkIn.timestamp), 'MM-dd')}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {format(new Date(checkIn.timestamp), 'HH:mm')}
+                  </p>
                 </div>
                 <div className="flex-1">
                   <p className="text-sm text-gray-700">{checkIn.content}</p>
