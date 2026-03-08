@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { blobs } = await list({ prefix: BLOB_FILENAME });
 
         if (blobs.length > 0) {
-          const response = await fetch(blobs[0].url);
+          const response = await fetch(blobs[0].url + `?t=${Date.now()}`);
           if (response.ok) {
             const data = await response.json();
             return res.status(200).json(data);

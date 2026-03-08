@@ -76,25 +76,42 @@ export const useStore = create<AppStore>()(
         try {
           const response = await fetch(API_URL);
           if (!response.ok) throw new Error('Failed to load data');
-          const data = await response.json();
-          const migratedCheckIns = migrateCheckIns(data.checkIns || []);
-          const needsMigration = migratedCheckIns.some(
-            (c, i) => c.id !== (data.checkIns || [])[i]?.id || c.timestamp !== (data.checkIns || [])[i]?.timestamp
-          );
-          set({
-            taskProgress: data.taskProgress || {},
-            checkIns: migratedCheckIns,
-            notes: data.notes || [],
-            bookmarks: data.bookmarks || [],
-            inspirations: data.inspirations || [],
-            isLoading: false,
-          });
-          // 如果数据有迁移，立即回写到 Blob
-          if (needsMigration) {
+          const blobData = await response.json();
+
+          // 对比 Blob 和 localStorage 的时间戳，取更新的一方
+          const localState = get();
+          const localUpdated = (localState as any)._lastUpdated as string | undefined;
+          const blobUpdated = blobData._lastUpdated as string | undefined;
+
+          const blobIsNewer =
+            !localUpdated ||
+            (blobUpdated && new Date(blobUpdated) > new Date(localUpdated));
+
+          if (blobIsNewer) {
+            const migratedCheckIns = migrateCheckIns(blobData.checkIns || []);
+            const needsMigration = migratedCheckIns.some(
+              (c, i) => c.id !== (blobData.checkIns || [])[i]?.id ||
+                        c.timestamp !== (blobData.checkIns || [])[i]?.timestamp
+            );
+            set({
+              taskProgress: blobData.taskProgress || {},
+              checkIns: migratedCheckIns,
+              notes: blobData.notes || [],
+              bookmarks: blobData.bookmarks || [],
+              inspirations: blobData.inspirations || [],
+              isLoading: false,
+            });
+            if (needsMigration) {
+              await get().saveData();
+            }
+          } else {
+            // localStorage 更新，把本地数据同步到 Blob
+            set({ isLoading: false });
             await get().saveData();
           }
         } catch (error) {
-          set({ error: (error as Error).message, isLoading: false });
+          // API 失败时保留 localStorage 中的数据
+          set({ isLoading: false });
         }
       },
 
@@ -109,7 +126,14 @@ export const useStore = create<AppStore>()(
           const response = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ taskProgress, checkIns, notes, bookmarks, inspirations }),
+            body: JSON.stringify({
+              taskProgress,
+              checkIns,
+              notes,
+              bookmarks,
+              inspirations,
+              _lastUpdated: new Date().toISOString(),
+            }),
           });
           if (!response.ok) throw new Error('Failed to save data');
         } catch (error) {
