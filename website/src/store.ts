@@ -1,7 +1,10 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { UserData, CheckIn, Note, Bookmark, Inspiration } from './types';
 
 const API_URL = '/api/data';
+const STORAGE_KEY = 'ai-pm-learning-storage';
+const isDevelopment = import.meta.env.DEV;
 
 interface AppStore extends UserData {
   isLoading: boolean;
@@ -24,47 +27,60 @@ interface AppStore extends UserData {
   importData: (jsonString: string) => Promise<void>;
 }
 
-export const useStore = create<AppStore>((set, get) => ({
-  taskProgress: {},
-  checkIns: [],
-  notes: [],
-  bookmarks: [],
-  inspirations: [],
-  isLoading: false,
-  error: null,
+export const useStore = create<AppStore>()(
+  persist(
+    (set, get) => ({
+      taskProgress: {},
+      checkIns: [],
+      notes: [],
+      bookmarks: [],
+      inspirations: [],
+      isLoading: false,
+      error: null,
 
-  loadData: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const response = await fetch(API_URL);
-      if (!response.ok) throw new Error('Failed to load data');
-      const data = await response.json();
-      set({
-        taskProgress: data.taskProgress || {},
-        checkIns: data.checkIns || [],
-        notes: data.notes || [],
-        bookmarks: data.bookmarks || [],
-        inspirations: data.inspirations || [],
-        isLoading: false,
-      });
-    } catch (error) {
-      set({ error: (error as Error).message, isLoading: false });
-    }
-  },
+      loadData: async () => {
+        // 开发环境直接使用 localStorage，生产环境从 API 加载
+        if (isDevelopment) {
+          set({ isLoading: false });
+          return;
+        }
 
-  saveData: async () => {
-    const { taskProgress, checkIns, notes, bookmarks, inspirations } = get();
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskProgress, checkIns, notes, bookmarks, inspirations }),
-      });
-      if (!response.ok) throw new Error('Failed to save data');
-    } catch (error) {
-      set({ error: (error as Error).message });
-    }
-  },
+        set({ isLoading: true, error: null });
+        try {
+          const response = await fetch(API_URL);
+          if (!response.ok) throw new Error('Failed to load data');
+          const data = await response.json();
+          set({
+            taskProgress: data.taskProgress || {},
+            checkIns: data.checkIns || [],
+            notes: data.notes || [],
+            bookmarks: data.bookmarks || [],
+            inspirations: data.inspirations || [],
+            isLoading: false,
+          });
+        } catch (error) {
+          set({ error: (error as Error).message, isLoading: false });
+        }
+      },
+
+      saveData: async () => {
+        // 开发环境数据已通过 persist 自动保存到 localStorage
+        if (isDevelopment) {
+          return;
+        }
+
+        const { taskProgress, checkIns, notes, bookmarks, inspirations } = get();
+        try {
+          const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ taskProgress, checkIns, notes, bookmarks, inspirations }),
+          });
+          if (!response.ok) throw new Error('Failed to save data');
+        } catch (error) {
+          set({ error: (error as Error).message });
+        }
+      },
 
   toggleTask: async (taskId: string) => {
     set((state) => ({
@@ -208,4 +224,16 @@ export const useStore = create<AppStore>((set, get) => ({
       console.error('Failed to import data:', error);
     }
   },
-}));
+}),
+{
+  name: STORAGE_KEY,
+  partialize: (state) => ({
+    taskProgress: state.taskProgress,
+    checkIns: state.checkIns,
+    notes: state.notes,
+    bookmarks: state.bookmarks,
+    inspirations: state.inspirations,
+  }),
+}
+)
+);
