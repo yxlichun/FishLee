@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@vercel/blob": "^2.3.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
@@ -17,7 +18,9 @@
     "react-dom": "^19.0.0",
     "react-markdown": "^9.0.0",
     "react-router-dom": "^7.1.0",
+    "react-syntax-highlighter": "^16.1.1",
     "recharts": "^2.15.0",
+    "remark-gfm": "^4.0.1",
     "vercel": "^50.28.0",
     "zustand": "^5.0.0"
   },
