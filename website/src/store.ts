@@ -6,6 +6,23 @@ const API_URL = '/api/data';
 const STORAGE_KEY = 'ai-pm-learning-storage';
 const isDevelopment = import.meta.env.DEV;
 
+// 迁移旧格式的 CheckIn 数据（date → id + timestamp）
+function migrateCheckIns(checkIns: any[]): CheckIn[] {
+  return checkIns.map((c: any, index: number) => {
+    if (!c.timestamp) {
+      return {
+        ...c,
+        id: c.id || `migrated-${Date.now()}-${index}`,
+        timestamp: c.date ? new Date(c.date).toISOString() : new Date().toISOString(),
+      };
+    }
+    if (!c.id) {
+      return { ...c, id: `migrated-${Date.now()}-${index}` };
+    }
+    return c as CheckIn;
+  });
+}
+
 interface AppStore extends UserData {
   isLoading: boolean;
   error: string | null;
@@ -50,14 +67,22 @@ export const useStore = create<AppStore>()(
           const response = await fetch(API_URL);
           if (!response.ok) throw new Error('Failed to load data');
           const data = await response.json();
+          const migratedCheckIns = migrateCheckIns(data.checkIns || []);
+          const needsMigration = migratedCheckIns.some(
+            (c, i) => c.id !== (data.checkIns || [])[i]?.id || c.timestamp !== (data.checkIns || [])[i]?.timestamp
+          );
           set({
             taskProgress: data.taskProgress || {},
-            checkIns: data.checkIns || [],
+            checkIns: migratedCheckIns,
             notes: data.notes || [],
             bookmarks: data.bookmarks || [],
             inspirations: data.inspirations || [],
             isLoading: false,
           });
+          // 如果数据有迁移，立即回写到 Blob
+          if (needsMigration) {
+            await get().saveData();
+          }
         } catch (error) {
           set({ error: (error as Error).message, isLoading: false });
         }
