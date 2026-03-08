@@ -19,12 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { blobs } = await list({ prefix: BLOB_FILENAME });
 
         if (blobs.length > 0) {
-          // Get the most recent blob
-          const latestBlob = blobs.sort((a, b) =>
-            new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
-          )[0];
-
-          const response = await fetch(latestBlob.url);
+          const response = await fetch(blobs[0].url);
           if (response.ok) {
             const data = await response.json();
             return res.status(200).json(data);
@@ -60,6 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const blob = await put(BLOB_FILENAME, JSON.stringify(data), {
         access: 'public',
         contentType: 'application/json',
+        addRandomSuffix: false,
       });
 
       return res.status(200).json({ success: true, url: blob.url });
