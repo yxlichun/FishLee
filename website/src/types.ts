@@ -64,10 +64,19 @@ export interface Inspiration {
   createdAt: string;
 }
 
+export interface Plan {
+  id: string;
+  date: string;       // YYYY-MM-DD
+  content: string;
+  completed: boolean;
+  createdAt: string;
+}
+
 export interface UserData {
   taskProgress: Record<string, boolean>;
   checkIns: CheckIn[];
   notes: Note[];
   bookmarks: Bookmark[];
   inspirations: Inspiration[];
+  plans: Plan[];
 }

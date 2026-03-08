@@ -7,6 +7,7 @@ import CheckIn from './components/CheckIn';
 import Notes from './components/Notes';
 import Resources from './components/Resources';
 import Inspirations from './components/Inspirations';
+import Plans from './components/Plans';
 import { useStore } from './store';
 
 function App() {
@@ -51,6 +52,7 @@ function App() {
           <Route path="notes" element={<Notes />} />
           <Route path="resources" element={<Resources />} />
           <Route path="inspirations" element={<Inspirations />} />
+          <Route path="plans" element={<Plans />} />
         </Route>
       </Routes>
     </BrowserRouter>

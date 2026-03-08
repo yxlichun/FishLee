@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Calendar, FileText, Bookmark, Download, Upload, Lightbulb } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Calendar, FileText, Bookmark, Download, Upload, Lightbulb, ClipboardList } from 'lucide-react';
 import { useStore } from '../store';
 
 export default function Layout() {
@@ -67,6 +67,10 @@ export default function Layout() {
           <NavLink to="/inspirations" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
             <Lightbulb size={20} />
             <span>灵感</span>
+          </NavLink>
+          <NavLink to="/plans" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            <ClipboardList size={20} />
+            <span>学习计划</span>
           </NavLink>
         </nav>
 

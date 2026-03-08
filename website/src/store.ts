@@ -1,19 +1,20 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { UserData, CheckIn, Note, Bookmark, Inspiration } from './types';
+import { UserData, CheckIn, Note, Bookmark, Inspiration, Plan } from './types';
 
 const API_URL = '/api/data';
 const STORAGE_KEY = 'ai-pm-learning-storage';
+const STORAGE_VERSION = 2;
 const isDevelopment = import.meta.env.DEV;
 
-// 判断字符串是否是合法日期
-function isValidDate(value: any): boolean {
+// ---------- helpers ----------
+
+function isValidDate(value: unknown): boolean {
   if (!value) return false;
-  const d = new Date(value);
+  const d = new Date(value as string);
   return !isNaN(d.getTime());
 }
 
-// 迁移旧格式的 CheckIn 数据（date → id + timestamp）
 function migrateCheckIns(checkIns: any[]): CheckIn[] {
   return checkIns.map((c: any, index: number) => {
     const needsTimestamp = !isValidDate(c.timestamp);
@@ -25,48 +26,81 @@ function migrateCheckIns(checkIns: any[]): CheckIn[] {
         timestamp: isValidDate(c.timestamp)
           ? c.timestamp
           : isValidDate(c.date)
-            ? new Date(c.date).toISOString()
-            : new Date().toISOString(),
-      };
+          ? new Date(c.date as string).toISOString()
+          : new Date().toISOString(),
+      } as CheckIn;
     }
     return c as CheckIn;
   });
 }
 
+// 从任意来源的 JSON 里安全地解出完整 UserData
+function parseUserData(raw: any): Omit<UserData, never> & { _lastUpdated?: string } {
+  return {
+    taskProgress:  raw.taskProgress  || {},
+    checkIns:      migrateCheckIns(raw.checkIns || []),
+    notes:         raw.notes         || [],
+    bookmarks:     raw.bookmarks     || [],
+    inspirations:  raw.inspirations  || [],
+    plans:         raw.plans         || [],
+    _lastUpdated:  raw._lastUpdated,
+  };
+}
+
+// ---------- store interface ----------
+
 interface AppStore extends UserData {
+  _lastUpdated: string;
   isLoading: boolean;
   error: string | null;
+
   loadData: () => Promise<void>;
   saveData: () => Promise<void>;
-  toggleTask: (taskId: string) => Promise<void>;
-  addCheckIn: (checkIn: Omit<CheckIn, 'id' | 'timestamp'>) => Promise<void>;
+
+  toggleTask:       (taskId: string) => Promise<void>;
+
+  addCheckIn:    (c: Omit<CheckIn, 'id' | 'timestamp'>) => Promise<void>;
   updateCheckIn: (id: string, updates: Partial<Omit<CheckIn, 'id' | 'timestamp'>>) => Promise<void>;
   deleteCheckIn: (id: string) => Promise<void>;
-  addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+
+  addNote:    (n: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateNote: (id: string, updates: Partial<Note>) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
-  addBookmark: (bookmark: Omit<Bookmark, 'id' | 'addedAt'>) => Promise<void>;
+
+  addBookmark:    (b: Omit<Bookmark, 'id' | 'addedAt'>) => Promise<void>;
   deleteBookmark: (id: string) => Promise<void>;
-  addInspiration: (inspiration: Omit<Inspiration, 'id' | 'createdAt'>) => Promise<void>;
+
+  addInspiration:    (i: Omit<Inspiration, 'id' | 'createdAt'>) => Promise<void>;
   updateInspiration: (id: string, updates: Partial<Inspiration>) => Promise<void>;
   deleteInspiration: (id: string) => Promise<void>;
+
+  addPlan:    (p: Omit<Plan, 'id' | 'createdAt' | 'completed'>) => Promise<void>;
+  updatePlan: (id: string, updates: Partial<Omit<Plan, 'id' | 'createdAt'>>) => Promise<void>;
+  deletePlan: (id: string) => Promise<void>;
+  togglePlan: (id: string) => Promise<void>;
+
   exportData: () => string;
   importData: (jsonString: string) => Promise<void>;
 }
 
+// ---------- store ----------
+
 export const useStore = create<AppStore>()(
   persist(
     (set, get) => ({
+      // --- state ---
       taskProgress: {},
-      checkIns: [],
-      notes: [],
-      bookmarks: [],
+      checkIns:     [],
+      notes:        [],
+      bookmarks:    [],
       inspirations: [],
-      isLoading: false,
-      error: null,
+      plans:        [],
+      _lastUpdated: '',
+      isLoading:    false,
+      error:        null,
 
+      // --- loadData ---
       loadData: async () => {
-        // 开发环境直接使用 localStorage，生产环境从 API 加载
         if (isDevelopment) {
           set({ isLoading: false });
           return;
@@ -74,243 +108,188 @@ export const useStore = create<AppStore>()(
 
         set({ isLoading: true, error: null });
         try {
-          const response = await fetch(API_URL);
-          if (!response.ok) throw new Error('Failed to load data');
-          const blobData = await response.json();
+          const res = await fetch(API_URL);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const blobRaw = await res.json();
+          const blobData = parseUserData(blobRaw);
 
-          // 对比 Blob 和 localStorage 的时间戳，取更新的一方
-          const localState = get();
-          const localUpdated = (localState as any)._lastUpdated as string | undefined;
-          const blobUpdated = blobData._lastUpdated as string | undefined;
+          const localUpdated = get()._lastUpdated;
+          const blobUpdated  = blobData._lastUpdated ?? '';
 
-          const blobIsNewer =
-            !localUpdated ||
-            (blobUpdated && new Date(blobUpdated) > new Date(localUpdated));
-
-          if (blobIsNewer) {
-            const migratedCheckIns = migrateCheckIns(blobData.checkIns || []);
-            const needsMigration = migratedCheckIns.some(
-              (c, i) => c.id !== (blobData.checkIns || [])[i]?.id ||
-                        c.timestamp !== (blobData.checkIns || [])[i]?.timestamp
-            );
-            set({
-              taskProgress: blobData.taskProgress || {},
-              checkIns: migratedCheckIns,
-              notes: blobData.notes || [],
-              bookmarks: blobData.bookmarks || [],
-              inspirations: blobData.inspirations || [],
-              isLoading: false,
-            });
-            if (needsMigration) {
+          // Blob 更新时间更晚 → 用 Blob（跨设备同步）
+          // 否则 → 保留本地，同步回 Blob
+          if (!localUpdated || (blobUpdated && blobUpdated > localUpdated)) {
+            set({ ...blobData, isLoading: false });
+            // 如果有迁移（checkIns 格式变化），立即回写
+            if (blobRaw.checkIns?.some((c: any) => !c.id || !isValidDate(c.timestamp))) {
               await get().saveData();
             }
           } else {
-            // localStorage 更新，把本地数据同步到 Blob
             set({ isLoading: false });
-            await get().saveData();
+            await get().saveData(); // 本地更新 → 写回 Blob
           }
-        } catch (error) {
-          // API 失败时保留 localStorage 中的数据
+        } catch {
+          // API 失败：静默降级，保留 localStorage 数据
           set({ isLoading: false });
         }
       },
 
+      // --- saveData ---
       saveData: async () => {
-        // 开发环境数据已通过 persist 自动保存到 localStorage
-        if (isDevelopment) {
-          return;
-        }
+        const now = new Date().toISOString();
+        // 先把时间戳写进 localStorage（persist 会自动持久化）
+        set({ _lastUpdated: now });
 
-        const { taskProgress, checkIns, notes, bookmarks, inspirations } = get();
+        if (isDevelopment) return; // 开发环境只存 localStorage
+
+        const { taskProgress, checkIns, notes, bookmarks, inspirations, plans } = get();
         try {
-          const response = await fetch(API_URL, {
-            method: 'POST',
+          const res = await fetch(API_URL, {
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              taskProgress,
-              checkIns,
-              notes,
-              bookmarks,
-              inspirations,
-              _lastUpdated: new Date().toISOString(),
+              taskProgress, checkIns, notes, bookmarks, inspirations, plans,
+              _lastUpdated: now,
             }),
           });
-          if (!response.ok) throw new Error('Failed to save data');
-        } catch (error) {
-          set({ error: (error as Error).message });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        } catch (err) {
+          set({ error: (err as Error).message });
         }
       },
 
-  toggleTask: async (taskId: string) => {
-    set((state) => ({
-      taskProgress: {
-        ...state.taskProgress,
-        [taskId]: !state.taskProgress[taskId],
+      // --- tasks ---
+      toggleTask: async (taskId) => {
+        set((s) => ({ taskProgress: { ...s.taskProgress, [taskId]: !s.taskProgress[taskId] } }));
+        await get().saveData();
       },
-    }));
-    await get().saveData();
-  },
 
-  addCheckIn: async (checkIn) => {
-    set((state) => ({
-      checkIns: [
-        {
-          ...checkIn,
-          id: Date.now().toString(),
-          timestamp: new Date().toISOString(),
-        },
-        ...state.checkIns,
-      ],
-    }));
-    await get().saveData();
-  },
+      // --- checkIns ---
+      addCheckIn: async (checkIn) => {
+        set((s) => ({
+          checkIns: [{ ...checkIn, id: `ci-${Date.now()}`, timestamp: new Date().toISOString() }, ...s.checkIns],
+        }));
+        await get().saveData();
+      },
+      updateCheckIn: async (id, updates) => {
+        set((s) => ({ checkIns: s.checkIns.map((c) => c.id === id ? { ...c, ...updates } : c) }));
+        await get().saveData();
+      },
+      deleteCheckIn: async (id) => {
+        set((s) => ({ checkIns: s.checkIns.filter((c) => c.id !== id) }));
+        await get().saveData();
+      },
 
-  updateCheckIn: async (id, updates) => {
-    set((state) => ({
-      checkIns: state.checkIns.map((checkIn) =>
-        checkIn.id === id ? { ...checkIn, ...updates } : checkIn
-      ),
-    }));
-    await get().saveData();
-  },
+      // --- notes ---
+      addNote: async (note) => {
+        const now = new Date().toISOString();
+        set((s) => ({
+          notes: [...s.notes, { ...note, id: `n-${Date.now()}`, createdAt: now, updatedAt: now }],
+        }));
+        await get().saveData();
+      },
+      updateNote: async (id, updates) => {
+        set((s) => ({
+          notes: s.notes.map((n) => n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n),
+        }));
+        await get().saveData();
+      },
+      deleteNote: async (id) => {
+        set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }));
+        await get().saveData();
+      },
 
-  deleteCheckIn: async (id) => {
-    set((state) => ({
-      checkIns: state.checkIns.filter((checkIn) => checkIn.id !== id),
-    }));
-    await get().saveData();
-  },
+      // --- bookmarks ---
+      addBookmark: async (bookmark) => {
+        set((s) => ({
+          bookmarks: [...s.bookmarks, { ...bookmark, id: `bm-${Date.now()}`, addedAt: new Date().toISOString() }],
+        }));
+        await get().saveData();
+      },
+      deleteBookmark: async (id) => {
+        set((s) => ({ bookmarks: s.bookmarks.filter((b) => b.id !== id) }));
+        await get().saveData();
+      },
 
-  addNote: async (note) => {
-    set((state) => ({
-      notes: [
-        ...state.notes,
-        {
-          ...note,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-    }));
-    await get().saveData();
-  },
+      // --- inspirations ---
+      addInspiration: async (inspiration) => {
+        set((s) => ({
+          inspirations: [{ ...inspiration, id: `ins-${Date.now()}`, createdAt: new Date().toISOString() }, ...s.inspirations],
+        }));
+        await get().saveData();
+      },
+      updateInspiration: async (id, updates) => {
+        set((s) => ({ inspirations: s.inspirations.map((i) => i.id === id ? { ...i, ...updates } : i) }));
+        await get().saveData();
+      },
+      deleteInspiration: async (id) => {
+        set((s) => ({ inspirations: s.inspirations.filter((i) => i.id !== id) }));
+        await get().saveData();
+      },
 
-  updateNote: async (id, updates) => {
-    set((state) => ({
-      notes: state.notes.map((note) =>
-        note.id === id
-          ? { ...note, ...updates, updatedAt: new Date().toISOString() }
-          : note
-      ),
-    }));
-    await get().saveData();
-  },
+      // --- plans ---
+      addPlan: async (plan) => {
+        set((s) => ({
+          plans: [
+            ...s.plans,
+            { ...plan, id: `pl-${Date.now()}`, completed: false, createdAt: new Date().toISOString() },
+          ],
+        }));
+        await get().saveData();
+      },
+      updatePlan: async (id, updates) => {
+        set((s) => ({ plans: s.plans.map((p) => p.id === id ? { ...p, ...updates } : p) }));
+        await get().saveData();
+      },
+      deletePlan: async (id) => {
+        set((s) => ({ plans: s.plans.filter((p) => p.id !== id) }));
+        await get().saveData();
+      },
+      togglePlan: async (id) => {
+        set((s) => ({ plans: s.plans.map((p) => p.id === id ? { ...p, completed: !p.completed } : p) }));
+        await get().saveData();
+      },
 
-  deleteNote: async (id) => {
-    set((state) => ({
-      notes: state.notes.filter((note) => note.id !== id),
-    }));
-    await get().saveData();
-  },
-
-  addBookmark: async (bookmark) => {
-    set((state) => ({
-      bookmarks: [
-        ...state.bookmarks,
-        {
-          ...bookmark,
-          id: Date.now().toString(),
-          addedAt: new Date().toISOString(),
-        },
-      ],
-    }));
-    await get().saveData();
-  },
-
-  deleteBookmark: async (id) => {
-    set((state) => ({
-      bookmarks: state.bookmarks.filter((b) => b.id !== id),
-    }));
-    await get().saveData();
-  },
-
-  addInspiration: async (inspiration) => {
-    set((state) => ({
-      inspirations: [
-        {
-          ...inspiration,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString(),
-        },
-        ...state.inspirations,
-      ],
-    }));
-    await get().saveData();
-  },
-
-  updateInspiration: async (id, updates) => {
-    set((state) => ({
-      inspirations: state.inspirations.map((i) =>
-        i.id === id ? { ...i, ...updates } : i
-      ),
-    }));
-    await get().saveData();
-  },
-
-  deleteInspiration: async (id) => {
-    set((state) => ({
-      inspirations: state.inspirations.filter((i) => i.id !== id),
-    }));
-    await get().saveData();
-  },
-
-  exportData: () => {
-    const { taskProgress, checkIns, notes, bookmarks, inspirations } = get();
-    return JSON.stringify(
-      { taskProgress, checkIns, notes, bookmarks, inspirations },
-      null,
-      2
-    );
-  },
-
-  importData: async (jsonString: string) => {
-    try {
-      const data = JSON.parse(jsonString);
-      set(data);
-      await get().saveData();
-    } catch (error) {
-      console.error('Failed to import data:', error);
-    }
-  },
-}),
-{
-  name: STORAGE_KEY,
-  version: 1,
-  partialize: (state) => ({
-    taskProgress: state.taskProgress,
-    checkIns: state.checkIns,
-    notes: state.notes,
-    bookmarks: state.bookmarks,
-    inspirations: state.inspirations,
-  }),
-  migrate: (persistedState: any, version: number) => {
-    // 迁移旧的 CheckIn 数据格式
-    if (version === 0 && persistedState?.checkIns) {
-      persistedState.checkIns = persistedState.checkIns.map((checkIn: any) => {
-        // 如果是旧格式（有 date 字段但没有 id 和 timestamp）
-        if (checkIn.date && !checkIn.id && !checkIn.timestamp) {
-          return {
-            ...checkIn,
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-            timestamp: new Date(checkIn.date).toISOString(),
-          };
+      // --- export / import ---
+      exportData: () => {
+        const { taskProgress, checkIns, notes, bookmarks, inspirations, plans } = get();
+        return JSON.stringify({ taskProgress, checkIns, notes, bookmarks, inspirations, plans }, null, 2);
+      },
+      importData: async (jsonString) => {
+        try {
+          const raw = JSON.parse(jsonString);
+          const data = parseUserData(raw);
+          set(data);
+          await get().saveData();
+        } catch (err) {
+          console.error('Failed to import data:', err);
         }
-        return checkIn;
-      });
+      },
+    }),
+    {
+      name: STORAGE_KEY,
+      version: STORAGE_VERSION,
+      // 持久化字段：包含 plans 和 _lastUpdated
+      partialize: (state) => ({
+        taskProgress: state.taskProgress,
+        checkIns:     state.checkIns,
+        notes:        state.notes,
+        bookmarks:    state.bookmarks,
+        inspirations: state.inspirations,
+        plans:        state.plans,
+        _lastUpdated: state._lastUpdated,
+      }),
+      migrate: (persisted: any, version: number) => {
+        // v0→v1: checkIn date→timestamp
+        if (version < 1 && persisted?.checkIns) {
+          persisted.checkIns = migrateCheckIns(persisted.checkIns);
+        }
+        // v1→v2: 补充 plans 字段
+        if (version < 2) {
+          persisted.plans = persisted.plans || [];
+        }
+        return persisted;
+      },
     }
-    return persistedState;
-  },
-}
-)
+  )
 );

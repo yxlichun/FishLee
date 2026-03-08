@@ -2,22 +2,30 @@ import { useState } from 'react';
 import { useStore } from '../store';
 import { learningPath } from '../data/learningPath';
 import { format } from 'date-fns';
-import { Pencil, Trash2, Check, X } from 'lucide-react';
+import { Pencil, Trash2, Check, X, ClipboardList } from 'lucide-react';
 
 export default function CheckIn() {
-  const { checkIns, addCheckIn, updateCheckIn, deleteCheckIn } = useStore();
-  const [content, setContent] = useState('');
-  const [duration, setDuration] = useState(60);
-  const [phaseId, setPhaseId] = useState(1);
+  const { checkIns, addCheckIn, updateCheckIn, deleteCheckIn, plans, togglePlan } = useStore();
+  const [content, setContent]     = useState('');
+  const [duration, setDuration]   = useState(60);
+  const [phaseId, setPhaseId]     = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editContent, setEditContent] = useState('');
+  const [editContent, setEditContent]   = useState('');
   const [editDuration, setEditDuration] = useState(60);
-  const [editPhaseId, setEditPhaseId] = useState(1);
+  const [editPhaseId, setEditPhaseId]   = useState(1);
+
+  const today = format(new Date(), 'yyyy-MM-dd');
+
+  const todayCheckIns = checkIns.filter((c) => {
+    const d = new Date(c.timestamp);
+    return !isNaN(d.getTime()) && format(d, 'yyyy-MM-dd') === today;
+  });
+
+  const todayPlans = plans.filter((p) => p.date === today);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
-
     await addCheckIn({ content, duration, phaseId });
     setContent('');
     setDuration(60);
@@ -31,15 +39,7 @@ export default function CheckIn() {
   };
 
   const handleSaveEdit = async (id: string) => {
-    await updateCheckIn(id, {
-      content: editContent,
-      duration: editDuration,
-      phaseId: editPhaseId,
-    });
-    setEditingId(null);
-  };
-
-  const handleCancelEdit = () => {
+    await updateCheckIn(id, { content: editContent, duration: editDuration, phaseId: editPhaseId });
     setEditingId(null);
   };
 
@@ -49,18 +49,44 @@ export default function CheckIn() {
     }
   };
 
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const todayCheckIns = checkIns.filter(c => {
-    const d = new Date(c.timestamp);
-    return !isNaN(d.getTime()) && format(d, 'yyyy-MM-dd') === today;
-  });
-
   return (
     <div className="p-8 max-w-4xl mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">每日打卡</h1>
         <p className="text-gray-500 mt-2">记录你的学习进展</p>
       </div>
+
+      {/* 今日计划回顾 */}
+      {todayPlans.length > 0 && (
+        <div className="card mb-6 border border-brand-200 bg-brand-50">
+          <div className="flex items-center gap-2 mb-3">
+            <ClipboardList size={18} className="text-brand-600" />
+            <h2 className="text-base font-semibold text-brand-900">今日计划</h2>
+            <span className="text-xs text-brand-600 ml-auto">
+              {todayPlans.filter((p) => p.completed).length}/{todayPlans.length} 完成
+            </span>
+          </div>
+          <div className="space-y-2">
+            {todayPlans.map((plan) => (
+              <div key={plan.id} className="flex items-center gap-3">
+                <button
+                  onClick={() => togglePlan(plan.id)}
+                  className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                    plan.completed
+                      ? 'bg-green-500 border-green-500'
+                      : 'border-brand-400 hover:border-green-400 bg-white'
+                  }`}
+                >
+                  {plan.completed && <Check size={12} className="text-white" />}
+                </button>
+                <span className={`text-sm ${plan.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                  {plan.content}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 打卡表单 */}
       <div className="card mb-8">
@@ -69,9 +95,7 @@ export default function CheckIn() {
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              学习内容
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">学习内容</label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -83,9 +107,7 @@ export default function CheckIn() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                学习时长（分钟）
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">学习时长（分钟）</label>
               <input
                 type="number"
                 value={duration}
@@ -94,11 +116,8 @@ export default function CheckIn() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                学习阶段
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">学习阶段</label>
               <select
                 value={phaseId}
                 onChange={(e) => setPhaseId(Number(e.target.value))}
@@ -127,12 +146,11 @@ export default function CheckIn() {
         ) : (
           <div className="space-y-4">
             {[...checkIns]
-              .filter(c => !isNaN(new Date(c.timestamp).getTime()))
+              .filter((c) => !isNaN(new Date(c.timestamp).getTime()))
               .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
               .map((checkIn) => (
                 <div key={checkIn.id} className="border border-gray-200 rounded-lg p-4">
                   {editingId === checkIn.id ? (
-                    // 编辑模式
                     <div className="space-y-3">
                       <textarea
                         value={editContent}
@@ -165,20 +183,17 @@ export default function CheckIn() {
                           onClick={() => handleSaveEdit(checkIn.id)}
                           className="flex items-center gap-1 px-3 py-1.5 bg-brand-600 text-white rounded-lg hover:bg-brand-700 text-sm"
                         >
-                          <Check size={16} />
-                          保存
+                          <Check size={16} />保存
                         </button>
                         <button
-                          onClick={handleCancelEdit}
+                          onClick={() => setEditingId(null)}
                           className="flex items-center gap-1 px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
                         >
-                          <X size={16} />
-                          取消
+                          <X size={16} />取消
                         </button>
                       </div>
                     </div>
                   ) : (
-                    // 查看模式
                     <>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
@@ -194,14 +209,12 @@ export default function CheckIn() {
                           <button
                             onClick={() => handleEdit(checkIn)}
                             className="p-1.5 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded"
-                            title="编辑"
                           >
                             <Pencil size={16} />
                           </button>
                           <button
                             onClick={() => handleDelete(checkIn.id)}
                             className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
-                            title="删除"
                           >
                             <Trash2 size={16} />
                           </button>
