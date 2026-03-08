@@ -25,8 +25,9 @@ export default function Dashboard() {
     };
   });
 
-  // 计算连续打卡天数
-  const sortedCheckIns = [...checkIns].sort((a, b) =>
+  // 计算连续打卡天数（过滤掉 timestamp 无效的记录）
+  const validCheckIns = checkIns.filter(c => !isNaN(new Date(c.timestamp).getTime()));
+  const sortedCheckIns = [...validCheckIns].sort((a, b) =>
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
   let streak = 0;

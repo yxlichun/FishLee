@@ -50,9 +50,10 @@ export default function CheckIn() {
   };
 
   const today = format(new Date(), 'yyyy-MM-dd');
-  const todayCheckIns = checkIns.filter(c =>
-    format(new Date(c.timestamp), 'yyyy-MM-dd') === today
-  );
+  const todayCheckIns = checkIns.filter(c => {
+    const d = new Date(c.timestamp);
+    return !isNaN(d.getTime()) && format(d, 'yyyy-MM-dd') === today;
+  });
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -126,6 +127,7 @@ export default function CheckIn() {
         ) : (
           <div className="space-y-4">
             {[...checkIns]
+              .filter(c => !isNaN(new Date(c.timestamp).getTime()))
               .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
               .map((checkIn) => (
                 <div key={checkIn.id} className="border border-gray-200 rounded-lg p-4">

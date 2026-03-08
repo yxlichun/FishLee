@@ -6,18 +6,28 @@ const API_URL = '/api/data';
 const STORAGE_KEY = 'ai-pm-learning-storage';
 const isDevelopment = import.meta.env.DEV;
 
+// 判断字符串是否是合法日期
+function isValidDate(value: any): boolean {
+  if (!value) return false;
+  const d = new Date(value);
+  return !isNaN(d.getTime());
+}
+
 // 迁移旧格式的 CheckIn 数据（date → id + timestamp）
 function migrateCheckIns(checkIns: any[]): CheckIn[] {
   return checkIns.map((c: any, index: number) => {
-    if (!c.timestamp) {
+    const needsTimestamp = !isValidDate(c.timestamp);
+    const needsId = !c.id;
+    if (needsTimestamp || needsId) {
       return {
         ...c,
         id: c.id || `migrated-${Date.now()}-${index}`,
-        timestamp: c.date ? new Date(c.date).toISOString() : new Date().toISOString(),
+        timestamp: isValidDate(c.timestamp)
+          ? c.timestamp
+          : isValidDate(c.date)
+            ? new Date(c.date).toISOString()
+            : new Date().toISOString(),
       };
-    }
-    if (!c.id) {
-      return { ...c, id: `migrated-${Date.now()}-${index}` };
     }
     return c as CheckIn;
   });
