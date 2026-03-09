@@ -65,7 +65,7 @@ export default function Plans() {
   const todayCount = plans.filter((p) => p.date === today).length;
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-8 max-w-5xl mx-auto">
 
       {/* ── 页头 ── */}
       <div className="mb-8 flex items-center justify-between">

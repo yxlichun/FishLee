@@ -52,6 +52,10 @@ export default function Layout() {
             <BookOpen size={20} />
             <span>学习路径</span>
           </NavLink>
+          <NavLink to="/plans" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            <ClipboardList size={20} />
+            <span>学习计划</span>
+          </NavLink>
           <NavLink to="/check-in" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
             <Calendar size={20} />
             <span>每日打卡</span>
@@ -67,10 +71,6 @@ export default function Layout() {
           <NavLink to="/inspirations" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
             <Lightbulb size={20} />
             <span>灵感</span>
-          </NavLink>
-          <NavLink to="/plans" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-            <ClipboardList size={20} />
-            <span>学习计划</span>
           </NavLink>
         </nav>
 
