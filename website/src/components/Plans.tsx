@@ -56,9 +56,9 @@ export default function Plans() {
   const toggleCollapse = (date: string) =>
     setCollapsed((prev) => ({ ...prev, [date]: !prev[date] }));
 
-  const sorted  = [...plans].sort((a, b) => a.date.localeCompare(b.date));
+  const sorted  = [...plans].sort((a, b) => b.date.localeCompare(a.date));
   const grouped = groupByDate(sorted);
-  const dates   = Object.keys(grouped).sort();
+  const dates   = Object.keys(grouped).sort().reverse();
 
   const total      = plans.length;
   const completed  = plans.filter((p) => p.completed).length;

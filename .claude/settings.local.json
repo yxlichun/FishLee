@@ -50,7 +50,8 @@
       "Bash(claude doctor 2>&1)",
       "Bash(cd website && npx tsc --noEmit 2>&1)",
       "Bash(ls -d */ 2>&1)",
-      "Bash(git add -A && git status 2>&1)"
+      "Bash(git add -A && git status 2>&1)",
+      "Bash(git commit -m \"fix: 修复上传图片时中文文件名导致 fetch headers 报错的问题\n\n对文件名使用 encodeURIComponent 编码后再放入 HTTP header，\n服务端使用 decodeURIComponent 解码还原，避免非 ISO-8859-1 字符导致请求失败\" 2>&1)"
     ]
   }
 }
