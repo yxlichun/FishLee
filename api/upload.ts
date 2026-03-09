@@ -21,7 +21,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const filename = (req.headers['x-filename'] as string) || `image-${Date.now()}.png`;
+    const rawFilename = (req.headers['x-filename'] as string) || `image-${Date.now()}.png`;
+    const filename = decodeURIComponent(rawFilename);
     const contentType = (req.headers['x-content-type'] as string) || 'image/png';
 
     // 从请求流直接上传到 Blob，避免在内存中加载整个文件

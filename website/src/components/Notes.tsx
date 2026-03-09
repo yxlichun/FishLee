@@ -21,7 +21,7 @@ async function uploadImage(file: File): Promise<string> {
   const response = await fetch(UPLOAD_URL, {
     method: 'POST',
     headers: {
-      'x-filename': `${Date.now()}-${file.name}`,
+      'x-filename': encodeURIComponent(`${Date.now()}-${file.name}`),
       'x-content-type': file.type,
     },
     body: file,
