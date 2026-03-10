@@ -53,7 +53,8 @@
       "Bash(git add -A && git status 2>&1)",
       "Bash(git commit -m \"fix: 修复上传图片时中文文件名导致 fetch headers 报错的问题\n\n对文件名使用 encodeURIComponent 编码后再放入 HTTP header，\n服务端使用 decodeURIComponent 解码还原，避免非 ISO-8859-1 字符导致请求失败\" 2>&1)",
       "Bash(git commit -m \"feat: 学习计划列表按日期倒序排列，最新日期显示在最前面\" 2>&1)",
-      "Bash(find . -name \"settings.local.json\" -o -name \"*.mdc\" -o -name \"commands.*\" 2>/dev/null | head -20)"
+      "Bash(find . -name \"settings.local.json\" -o -name \"*.mdc\" -o -name \"commands.*\" 2>/dev/null | head -20)",
+      "Bash(git commit -m \"feat: 将学习计划移至学习路径下方，统一页面宽度为 max-w-5xl\" 2>&1)"
     ]
   }
 }

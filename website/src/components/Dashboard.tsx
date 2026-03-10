@@ -56,7 +56,7 @@ export default function Dashboard() {
   }
 
   // 计算总学习时长
-  const totalHours = checkIns.reduce((sum, c) => sum + c.duration, 0);
+  const totalHours = checkIns.reduce((sum, c) => sum + c.duration, 0) / 60;
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
