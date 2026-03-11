@@ -16,7 +16,7 @@ const HEATMAP_COLORS = [
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 const WEEKS = 26; // 展示 182 天（26 周）
-const START_DATE = '2025-03-01'; // 固定起始日期
+const START_DATE = '2026-03-01'; // 固定起始日期
 
 interface DayData {
   date: string;
@@ -86,7 +86,7 @@ export default function Dashboard() {
   // 固定从 START_DATE 开始，向后 182 天
   const totalDays = WEEKS * 7;
   const todayStr = format(startOfDay(new Date()), 'yyyy-MM-dd');
-  const startDate = parseISO(START_DATE); // parseISO 解析为本地时间，避免 UTC 偏移
+  const startDate = parseISO(START_DATE);
 
   // 按日期聚合打卡数据
   const checkInMap = new Map<string, { count: number; minutes: number }>();
