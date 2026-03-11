@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { learningPath } from '../data/learningPath';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CheckCircle2, Calendar, FileText, Flame } from 'lucide-react';
-import { format, addDays, startOfDay } from 'date-fns';
+import { format, addDays, startOfDay, parseISO } from 'date-fns';
 
 // 热力图颜色层级（仿 GitHub 绿色调）
 const HEATMAP_COLORS = [
@@ -86,7 +86,7 @@ export default function Dashboard() {
   // 固定从 START_DATE 开始，向后 182 天
   const totalDays = WEEKS * 7;
   const todayStr = format(startOfDay(new Date()), 'yyyy-MM-dd');
-  const startDate = new Date(START_DATE);
+  const startDate = parseISO(START_DATE); // parseISO 解析为本地时间，避免 UTC 偏移
 
   // 按日期聚合打卡数据
   const checkInMap = new Map<string, { count: number; minutes: number }>();
