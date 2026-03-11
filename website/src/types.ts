@@ -27,12 +27,19 @@ export interface Phase {
   sections: Section[];
 }
 
+export interface PlanSnapshot {
+  id: string;
+  content: string;
+  completed: boolean;
+}
+
 export interface CheckIn {
   id: string;
   timestamp: string;
   content: string;
   duration: number;
   phaseId: number;
+  planSnapshot?: PlanSnapshot[]; // 打卡时当日计划的快照
 }
 
 export interface Note {

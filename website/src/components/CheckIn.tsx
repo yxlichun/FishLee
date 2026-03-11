@@ -26,7 +26,13 @@ export default function CheckIn() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
-    await addCheckIn({ content, duration, phaseId });
+    // 打卡时对当日计划做快照，永久保存内容与完成状态
+    const planSnapshot = todayPlans.map((p) => ({
+      id: p.id,
+      content: p.content,
+      completed: p.completed,
+    }));
+    await addCheckIn({ content, duration, phaseId, planSnapshot });
     setContent('');
     setDuration(60);
   };
@@ -221,6 +227,28 @@ export default function CheckIn() {
                         </div>
                       </div>
                       <p className="text-gray-700 whitespace-pre-wrap">{checkIn.content}</p>
+                      {checkIn.planSnapshot && checkIn.planSnapshot.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <p className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-1">
+                            <ClipboardList size={12} />
+                            打卡时计划快照
+                          </p>
+                          <div className="space-y-1">
+                            {checkIn.planSnapshot.map((p) => (
+                              <div key={p.id} className="flex items-center gap-2 text-sm">
+                                <span className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center ${
+                                  p.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'
+                                }`}>
+                                  {p.completed && <Check size={10} className="text-white" />}
+                                </span>
+                                <span className={p.completed ? 'line-through text-gray-400' : 'text-gray-600'}>
+                                  {p.content}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

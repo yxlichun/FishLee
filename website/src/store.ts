@@ -4,7 +4,7 @@ import { UserData, CheckIn, Note, Bookmark, Inspiration, Plan } from './types';
 
 const API_URL = '/api/data';
 const STORAGE_KEY = 'ai-pm-learning-storage';
-const STORAGE_VERSION = 2;
+const STORAGE_VERSION = 3;
 const isDevelopment = import.meta.env.DEV;
 
 // ---------- helpers ----------
@@ -288,6 +288,7 @@ export const useStore = create<AppStore>()(
         if (version < 2) {
           persisted.plans = persisted.plans || [];
         }
+        // v2→v3: checkIn 新增 planSnapshot 可选字段，旧数据无需补充（undefined 即可）
         return persisted;
       },
     }
