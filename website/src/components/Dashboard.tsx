@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { learningPath } from '../data/learningPath';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CheckCircle2, Calendar, FileText, Flame } from 'lucide-react';
-import { format, subDays, startOfDay } from 'date-fns';
+import { format, addDays, startOfDay } from 'date-fns';
 
 // 热力图颜色层级（仿 GitHub 绿色调）
 const HEATMAP_COLORS = [
@@ -15,7 +15,8 @@ const HEATMAP_COLORS = [
 ];
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
-const WEEKS = 26; // 展示过去 26 周
+const WEEKS = 26; // 展示 182 天（26 周）
+const START_DATE = '2025-03-01'; // 固定起始日期
 
 interface DayData {
   date: string;
@@ -82,9 +83,10 @@ export default function Dashboard() {
   const totalHours = checkIns.reduce((sum, c) => sum + c.duration, 0) / 60;
 
   // ── 热力图数据计算 ──────────────────────────────────────────
-  // 生成过去 WEEKS*7 天的日期网格（从最早到今天）
+  // 固定从 START_DATE 开始，向后 182 天
   const totalDays = WEEKS * 7;
   const todayStr = format(startOfDay(new Date()), 'yyyy-MM-dd');
+  const startDate = new Date(START_DATE);
 
   // 按日期聚合打卡数据
   const checkInMap = new Map<string, { count: number; minutes: number }>();
@@ -109,8 +111,8 @@ export default function Dashboard() {
 
   // 构建每天的 DayData
   const dayDataMap = new Map<string, DayData>();
-  for (let i = totalDays - 1; i >= 0; i--) {
-    const d = format(subDays(new Date(), i), 'yyyy-MM-dd');
+  for (let i = 0; i < totalDays; i++) {
+    const d = format(addDays(startDate, i), 'yyyy-MM-dd');
     const ci = checkInMap.get(d) ?? { count: 0, minutes: 0 };
     const noteCount = noteMap.get(d) ?? 0;
     const completedPlans = planMap.get(d) ?? 0;
@@ -135,15 +137,13 @@ export default function Dashboard() {
   }
 
   // 构建网格：按周列排列，每列7格（周日到周六）
-  // 找到网格起始日（往前推到最近的周日）
-  const gridStart = subDays(new Date(), totalDays - 1);
-  const startWeekDay = gridStart.getDay(); // 0=日
-  // 在开头补齐空格使第一列从周日开始
+  // 找到起始日的星期，补齐开头空格使第一列从周日开始
+  const startWeekDay = startDate.getDay(); // 0=日
   const paddingDays = startWeekDay;
   const cells: (DayData | null)[] = [
     ...Array(paddingDays).fill(null),
     ...Array.from({ length: totalDays }, (_, i) =>
-      dayDataMap.get(format(subDays(new Date(), totalDays - 1 - i), 'yyyy-MM-dd')) ?? null
+      dayDataMap.get(format(addDays(startDate, i), 'yyyy-MM-dd')) ?? null
     ),
   ];
 
@@ -251,14 +251,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <div className="relative inline-block" style={{ minWidth: 'max-content' }}>
+        <div className="w-full">
+          <div className="relative w-full">
             {/* 月份标签 */}
             <div className="flex mb-1 ml-8">
               {weeks.map((_, colIdx) => {
                 const monthLabel = monthLabels.find(m => m.col === colIdx);
                 return (
-                  <div key={colIdx} className="w-4 mr-0.5 flex-shrink-0">
+                  <div key={colIdx} className="flex-1 min-w-0">
                     {monthLabel && (
                       <span className="text-xs text-gray-400 whitespace-nowrap">{monthLabel.label}</span>
                     )}
@@ -271,7 +271,7 @@ export default function Dashboard() {
               {/* 星期标签 */}
               <div className="flex flex-col gap-0.5 mr-1 flex-shrink-0">
                 {WEEKDAY_LABELS.map((label, i) => (
-                  <div key={i} className="w-6 h-4 flex items-center justify-end">
+                  <div key={i} className="h-4 w-6 flex items-center justify-end">
                     {(i === 1 || i === 3 || i === 5) && (
                       <span className="text-xs text-gray-400">{label}</span>
                     )}
@@ -281,15 +281,15 @@ export default function Dashboard() {
 
               {/* 格子 */}
               {weeks.map((week, colIdx) => (
-                <div key={colIdx} className="flex flex-col gap-0.5">
+                <div key={colIdx} className="flex-1 flex flex-col gap-0.5">
                   {week.map((day, rowIdx) => {
                     if (!day) {
-                      return <div key={rowIdx} className="w-4 h-4 rounded-sm" />;
+                      return <div key={rowIdx} className="w-full aspect-square rounded-sm" />;
                     }
                     return (
                       <div
                         key={rowIdx}
-                        className={`w-4 h-4 rounded-sm cursor-pointer transition-opacity hover:opacity-75 ${getColorClass(day.score)} ${day.date === todayStr ? 'ring-2 ring-brand-500 ring-offset-1' : ''}`}
+                        className={`w-full aspect-square rounded-sm cursor-pointer transition-opacity hover:opacity-75 ${getColorClass(day.score)} ${day.date === todayStr ? 'ring-2 ring-brand-500 ring-offset-1' : ''}`}
                         onMouseEnter={(e) => {
                           const rect = e.currentTarget.getBoundingClientRect();
                           setTooltip({ day, x: rect.left, y: rect.top });
