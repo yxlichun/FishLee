@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { format, addDays } from 'date-fns';
-import { Plus, Trash2, Check, ChevronDown, ChevronUp, CalendarDays, Pencil, X } from 'lucide-react';
+import { Plus, Trash2, Check, ChevronDown, ChevronUp, CalendarDays, Pencil, X, CalendarClock } from 'lucide-react';
 import { Plan } from '../types';
 
 function getQuickDates() {
@@ -31,9 +31,19 @@ export default function Plans() {
   const [collapsed, setCollapsed]     = useState<Record<string, boolean>>({});
   const [editingId, setEditingId]     = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [reschedulingDate, setReschedulingDate] = useState<string | null>(null);
+  const [rescheduleTarget, setRescheduleTarget] = useState(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
 
   const today      = format(new Date(), 'yyyy-MM-dd');
   const quickDates = getQuickDates();
+
+  const sorted  = [...plans].sort((a, b) => b.date.localeCompare(a.date));
+  const grouped = groupByDate(sorted);
+  const dates   = Object.keys(grouped).sort().reverse();
+
+  const total      = plans.length;
+  const completed  = plans.filter((p) => p.completed).length;
+  const todayCount = plans.filter((p) => p.date === today).length;
 
   const handleAdd = async () => {
     if (!newContent.trim()) return;
@@ -56,13 +66,12 @@ export default function Plans() {
   const toggleCollapse = (date: string) =>
     setCollapsed((prev) => ({ ...prev, [date]: !prev[date] }));
 
-  const sorted  = [...plans].sort((a, b) => b.date.localeCompare(a.date));
-  const grouped = groupByDate(sorted);
-  const dates   = Object.keys(grouped).sort().reverse();
-
-  const total      = plans.length;
-  const completed  = plans.filter((p) => p.completed).length;
-  const todayCount = plans.filter((p) => p.date === today).length;
+  const handleReschedule = async (fromDate: string) => {
+    if (!rescheduleTarget || rescheduleTarget <= fromDate) return;
+    const unfinished = grouped[fromDate]?.filter((p) => !p.completed) ?? [];
+    await Promise.all(unfinished.map((p) => updatePlan(p.id, { date: rescheduleTarget })));
+    setReschedulingDate(null);
+  };
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
@@ -191,18 +200,21 @@ export default function Plans() {
             const doneAll     = group.every((p) => p.completed);
             const doneCount   = group.filter((p) => p.completed).length;
             const isCollapsed = collapsed[date];
+            const hasUnfinished = group.some((p) => !p.completed);
 
             return (
               <div key={date} className="card !p-0 overflow-hidden">
 
                 {/* 日期标题行 */}
-                <button
-                  className={`w-full flex items-center justify-between px-6 py-4 text-left transition-colors ${
-                    isToday ? 'bg-brand-50 hover:bg-brand-100' : 'hover:bg-gray-50'
+                <div
+                  className={`w-full flex items-center justify-between px-6 py-4 transition-colors ${
+                    isToday ? 'bg-brand-50' : 'hover:bg-gray-50'
                   }`}
-                  onClick={() => toggleCollapse(date)}
                 >
-                  <div className="flex items-center gap-3">
+                  <button
+                    className="flex items-center gap-3 flex-1 text-left"
+                    onClick={() => toggleCollapse(date)}
+                  >
                     <CalendarDays
                       size={18}
                       className={isToday ? 'text-brand-600' : isPast ? 'text-gray-400' : 'text-gray-500'}
@@ -226,12 +238,81 @@ export default function Plans() {
                     {doneAll && (
                       <span className="text-sm text-green-600 font-medium">✅ 全部完成</span>
                     )}
+                  </button>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* 延期按钮：仅对有未完成条目的过期日期显示 */}
+                    {isPast && !isToday && hasUnfinished && (
+                      <button
+                        onClick={() => {
+                          setReschedulingDate(reschedulingDate === date ? null : date);
+                          setRescheduleTarget(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
+                        title="将未完成计划延期到新日期"
+                      >
+                        <CalendarClock size={14} />
+                        延期
+                      </button>
+                    )}
+                    <button onClick={() => toggleCollapse(date)}>
+                      {isCollapsed
+                        ? <ChevronDown size={16} className="text-gray-400" />
+                        : <ChevronUp   size={16} className="text-gray-400" />
+                      }
+                    </button>
                   </div>
-                  {isCollapsed
-                    ? <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />
-                    : <ChevronUp   size={16} className="text-gray-400 flex-shrink-0" />
-                  }
-                </button>
+                </div>
+
+                {/* 延期面板 */}
+                {reschedulingDate === date && (
+                  <div className="px-6 py-4 bg-orange-50 border-t border-orange-100">
+                    <p className="text-sm font-medium text-orange-800 mb-3">
+                      将 {group.filter(p => !p.completed).length} 项未完成计划移至：
+                    </p>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {Array.from({ length: 7 }, (_, i) => {
+                        const d = addDays(new Date(), i + 1);
+                        const val = format(d, 'yyyy-MM-dd');
+                        const label = i === 0 ? '明天' : `+${i + 1}天`;
+                        return (
+                          <button
+                            key={val}
+                            onClick={() => setRescheduleTarget(val)}
+                            className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                              rescheduleTarget === val
+                                ? 'bg-orange-500 text-white border-orange-500'
+                                : 'border-orange-300 text-orange-700 hover:bg-orange-100'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="date"
+                        value={rescheduleTarget}
+                        min={format(addDays(new Date(), 1), 'yyyy-MM-dd')}
+                        onChange={(e) => setRescheduleTarget(e.target.value)}
+                        className="px-3 py-1.5 border border-orange-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                      />
+                      <button
+                        onClick={() => handleReschedule(date)}
+                        className="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm rounded-lg transition-colors"
+                      >
+                        确认延期
+                      </button>
+                      <button
+                        onClick={() => setReschedulingDate(null)}
+                        className="px-3 py-1.5 text-gray-500 hover:text-gray-700 text-sm"
+                      >
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* 计划条目 */}
                 {!isCollapsed && (
