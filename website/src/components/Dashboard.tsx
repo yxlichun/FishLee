@@ -63,7 +63,7 @@ export default function Dashboard() {
   sortedCheckIns.forEach(checkIn => {
     const date = new Date(checkIn.timestamp);
     date.setHours(0, 0, 0, 0);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = format(date, 'yyyy-MM-dd');
     checkInsByDate.set(dateStr, true);
   });
 
@@ -71,7 +71,7 @@ export default function Dashboard() {
   for (let i = 0; i < 365; i++) {
     const checkDate = new Date(today);
     checkDate.setDate(checkDate.getDate() - i);
-    const dateStr = checkDate.toISOString().split('T')[0];
+    const dateStr = format(checkDate, 'yyyy-MM-dd');
     if (checkInsByDate.has(dateStr)) {
       streak++;
     } else {
