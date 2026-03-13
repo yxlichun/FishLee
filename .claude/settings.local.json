@@ -63,7 +63,8 @@
       "Bash(node -e \"\nconst start = new Date\\('2025-03-01'\\);\nconst end = new Date\\(start\\);\nend.setDate\\(end.getDate\\(\\) + 182\\);\nconsole.log\\('Start:', start.toISOString\\(\\).split\\('T'\\)[0]\\);\nconsole.log\\('End:', end.toISOString\\(\\).split\\('T'\\)[0]\\);\nconsole.log\\('Today:', new Date\\(\\).toISOString\\(\\).split\\('T'\\)[0]\\);\n\")",
       "Bash(git commit -m \"fix: 热力图起始日期改为 2026-03-01，修复数据不显示问题\" 2>&1)",
       "Bash(git commit -m \"feat: 打卡时对当日计划做内容快照，历史记录中永久保存打卡时刻的计划状态\" 2>&1)",
-      "Bash(git commit -m \"$\\(cat <<'EOF'\nfix: 修复连续打卡天数和热力图在东八区的日期归属错误\n\n将 Dashboard 连续打卡天数计算中的 toISOString\\(\\).split\\('T'\\)[0] 改为 date-fns format\\(\\)，避免 UTC 偏移导致零点后记录被归到前一天。\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<'EOF'\nfix: 修复连续打卡天数和热力图在东八区的日期归属错误\n\n将 Dashboard 连续打卡天数计算中的 toISOString\\(\\).split\\('T'\\)[0] 改为 date-fns format\\(\\)，避免 UTC 偏移导致零点后记录被归到前一天。\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<'EOF'\nfix: 学习计划延期功能支持延期到今天\n\n将延期面板的默认目标日期、快捷按钮起始、日期选择器最小值均从「明天」改为「今天」。\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

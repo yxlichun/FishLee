@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { learningPath } from '../data/learningPath';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CheckCircle2, Calendar, FileText, Flame } from 'lucide-react';
-import { format, addDays, startOfDay, parseISO } from 'date-fns';
+import { format, addDays, parseISO } from 'date-fns';
 
 // 热力图颜色层级（仿 GitHub 绿色调）
 const HEATMAP_COLORS = [
@@ -67,8 +67,10 @@ export default function Dashboard() {
     checkInsByDate.set(dateStr, true);
   });
 
-  // 计算连续天数
-  for (let i = 0; i < 365; i++) {
+  // 计算连续天数：今天未打卡时从昨天开始计（保留昨日连续记录直到今天结束）
+  const todayStr = format(today, 'yyyy-MM-dd');
+  const startOffset = checkInsByDate.has(todayStr) ? 0 : 1;
+  for (let i = startOffset; i < 365; i++) {
     const checkDate = new Date(today);
     checkDate.setDate(checkDate.getDate() - i);
     const dateStr = format(checkDate, 'yyyy-MM-dd');
@@ -85,7 +87,6 @@ export default function Dashboard() {
   // ── 热力图数据计算 ──────────────────────────────────────────
   // 固定从 START_DATE 开始，向后 182 天
   const totalDays = WEEKS * 7;
-  const todayStr = format(startOfDay(new Date()), 'yyyy-MM-dd');
   const startDate = parseISO(START_DATE);
 
   // 按日期聚合打卡数据
