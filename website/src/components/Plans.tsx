@@ -32,7 +32,7 @@ export default function Plans() {
   const [editingId, setEditingId]     = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [reschedulingDate, setReschedulingDate] = useState<string | null>(null);
-  const [rescheduleTarget, setRescheduleTarget] = useState(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
+  const [rescheduleTarget, setRescheduleTarget] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   const today      = format(new Date(), 'yyyy-MM-dd');
   const quickDates = getQuickDates();
@@ -246,7 +246,7 @@ export default function Plans() {
                       <button
                         onClick={() => {
                           setReschedulingDate(reschedulingDate === date ? null : date);
-                          setRescheduleTarget(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
+                          setRescheduleTarget(format(new Date(), 'yyyy-MM-dd'));
                         }}
                         className="flex items-center gap-1 px-2.5 py-1 text-xs text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
                         title="将未完成计划延期到新日期"
@@ -272,9 +272,9 @@ export default function Plans() {
                     </p>
                     <div className="flex flex-wrap gap-2 mb-3">
                       {Array.from({ length: 7 }, (_, i) => {
-                        const d = addDays(new Date(), i + 1);
+                        const d = addDays(new Date(), i);
                         const val = format(d, 'yyyy-MM-dd');
-                        const label = i === 0 ? '明天' : `+${i + 1}天`;
+                        const label = i === 0 ? '今天' : i === 1 ? '明天' : `+${i}天`;
                         return (
                           <button
                             key={val}
@@ -294,7 +294,7 @@ export default function Plans() {
                       <input
                         type="date"
                         value={rescheduleTarget}
-                        min={format(addDays(new Date(), 1), 'yyyy-MM-dd')}
+                        min={today}
                         onChange={(e) => setRescheduleTarget(e.target.value)}
                         className="px-3 py-1.5 border border-orange-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent"
                       />
