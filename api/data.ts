@@ -1,72 +1,83 @@
-import { put, list, del } from '@vercel/blob';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import COS from 'cos-nodejs-sdk-v5';
+import type { IncomingMessage, ServerResponse } from 'http';
 
-const BLOB_FILENAME = 'ai-pm-data.json';
+const cos = new COS({
+  SecretId: process.env.COS_SECRET_ID!,
+  SecretKey: process.env.COS_SECRET_KEY!,
+});
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+const Bucket = process.env.COS_BUCKET!;
+const Region = process.env.COS_REGION!;
+const DATA_KEY = 'ai-pm-data.json';
+
+function setCors(res: ServerResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => resolve(body));
+    req.on('error', reject);
+  });
+}
+
+function getObject(): Promise<string | null> {
+  return new Promise((resolve) => {
+    cos.getObject({ Bucket, Region, Key: DATA_KEY }, (err, data) => {
+      if (err) { resolve(null); return; }
+      resolve(data.Body.toString());
+    });
+  });
+}
+
+function putObject(content: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    cos.putObject(
+      { Bucket, Region, Key: DATA_KEY, Body: content, ContentType: 'application/json' },
+      (err) => { err ? reject(err) : resolve(); }
+    );
+  });
+}
+
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  setCors(res);
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.writeHead(200).end();
+    return;
   }
 
   try {
     if (req.method === 'GET') {
-      // Read data from blob
-      try {
-        const { blobs } = await list({ prefix: BLOB_FILENAME });
-
-        if (blobs.length > 0) {
-          const response = await fetch(blobs[0].url + `?t=${Date.now()}`);
-          if (response.ok) {
-            const data = await response.json();
-            return res.status(200).json(data);
-          }
-        }
-      } catch (error) {
-        console.log('Blob not found or error reading:', error);
+      const body = await getObject();
+      if (body) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(body);
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ taskProgress: {}, checkIns: [], notes: [], bookmarks: [], inspirations: [], plans: [] }));
       }
-
-      // Return empty data if no blob exists
-      return res.status(200).json({
-        taskProgress: {},
-        checkIns: [],
-        notes: [],
-        bookmarks: [],
-        inspirations: [],
-      });
+      return;
     }
 
     if (req.method === 'POST') {
-      // Delete old blobs first
-      try {
-        const { blobs } = await list({ prefix: BLOB_FILENAME });
-        for (const blob of blobs) {
-          await del(blob.url);
-        }
-      } catch (error) {
-        console.log('Error deleting old blobs:', error);
-      }
-
-      // Write new data to blob
-      const data = req.body;
-      const blob = await put(BLOB_FILENAME, JSON.stringify(data), {
-        access: 'public',
-        contentType: 'application/json',
-        addRandomSuffix: false,
-      });
-
-      return res.status(200).json({ success: true, url: blob.url });
+      const raw = await readBody(req);
+      // 验证是合法 JSON
+      JSON.parse(raw);
+      await putObject(raw);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+      return;
     }
 
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.writeHead(405).end(JSON.stringify({ error: 'Method not allowed' }));
   } catch (error) {
     console.error('API Error:', error);
-    return res.status(500).json({
-      error: 'Internal server error',
-      details: (error as Error).message
-    });
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Internal server error', details: (error as Error).message }));
   }
 }

@@ -1,0 +1,17 @@
+{
+  "name": "fishlee-scf",
+  "version": "1.0.0",
+  "description": "腾讯云 SCF 函数 - FishLee API",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc --outDir dist && cp package.json dist/ && cp package-lock.json dist/ 2>/dev/null || true",
+    "install:prod": "npm install --production --cache /tmp/npm-cache"
+  },
+  "dependencies": {
+    "cos-nodejs-sdk-v5": "^2.14.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "~5.7.0"
+  }
+}

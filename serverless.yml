@@ -1,0 +1,40 @@
+# 腾讯云 Serverless Framework 部署配置
+# 文档：https://github.com/serverless-components/tencent-scf
+
+component: scf
+name: fishlee-api
+
+inputs:
+  name: fishlee-api
+  src:
+    src: ./scf/dist        # tsc 编译产物
+    exclude:
+      - .git/**
+  handler: index.main_handler
+  runtime: Nodejs16.13
+  region: ap-shanghai      # 与 COS 存储桶同地域
+  memorySize: 128
+  timeout: 10
+  environment:
+    variables:
+      COS_SECRET_ID: ${env:COS_SECRET_ID}
+      COS_SECRET_KEY: ${env:COS_SECRET_KEY}
+      COS_BUCKET: ${env:COS_BUCKET}
+      COS_REGION: ${env:COS_REGION}
+  events:
+    - apigw:
+        parameters:
+          protocols:
+            - http
+            - https
+          serviceName: fishlee-api-gateway
+          environment: release
+          endpoints:
+            - path: /api/data
+              method: ANY
+            - path: /api/upload
+              method: ANY
+            - path: /api/data
+              method: OPTIONS
+            - path: /api/upload
+              method: OPTIONS
