@@ -1,0 +1,90 @@
+{
+  "/Users/sftc/Documents/code/FishLee/serverless.yml": {
+    "versionFramework": "4.33.3",
+    "servicePath": "/Users/sftc/Documents/code/FishLee/serverless.yml",
+    "serviceConfigFileName": "serverless.yml",
+    "service": {
+      "component": "scf",
+      "name": "fishlee-api",
+      "inputs": {
+        "name": "fishlee-api",
+        "src": {
+          "src": "./scf/dist",
+          "exclude": [
+            ".git/**"
+          ]
+        },
+        "handler": "index.main_handler",
+        "runtime": "Nodejs16.13",
+        "region": "ap-guangzhou",
+        "memorySize": 128,
+        "timeout": 10,
+        "environment": {
+          "variables": {
+            "COS_SECRET_ID": "<REDACTED>",
+            "COS_SECRET_KEY": "<REDACTED>",
+            "COS_BUCKET": "${env:COS_BUCKET}",
+            "COS_REGION": "${env:COS_REGION}"
+          }
+        },
+        "events": [
+          {
+            "apigw": {
+              "parameters": {
+                "protocols": [
+                  "http",
+                  "https"
+                ],
+                "serviceName": "fishlee-api-gateway",
+                "environment": "release",
+                "endpoints": [
+                  {
+                    "path": "/api/data",
+                    "method": "ANY"
+                  },
+                  {
+                    "path": "/api/upload",
+                    "method": "ANY"
+                  },
+                  {
+                    "path": "/api/data",
+                    "method": "OPTIONS"
+                  },
+                  {
+                    "path": "/api/upload",
+                    "method": "OPTIONS"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "dashboard": {
+      "isEnabledForService": false,
+      "requiredAuthentication": true,
+      "orgFeaturesInUse": null,
+      "orgObservabilityIntegrations": null,
+      "serviceAppId": null,
+      "serviceProvider": null,
+      "instanceParameters": null
+    },
+    "serviceRawFile": "# 腾讯云 Serverless Framework 部署配置\n# 文档：https://github.com/serverless-components/tencent-scf\n\ncomponent: scf\nname: fishlee-api\n\ninputs:\n  name: fishlee-api\n  src:\n    src: ./scf/dist        # tsc 编译产物\n    exclude:\n      - .git/**\n  handler: index.main_handler\n  runtime: Nodejs16.13\n  region: ap-guangzhou     # 与 COS 存储桶同地域\n  memorySize: 128\n  timeout: 10\n  environment:\n    variables:\n      COS_SECRET_ID: ${env:COS_SECRET_ID}\n      COS_SECRET_KEY: ${env:COS_SECRET_KEY}\n      COS_BUCKET: ${env:COS_BUCKET}\n      COS_REGION: ${env:COS_REGION}\n  events:\n    - apigw:\n        parameters:\n          protocols:\n            - http\n            - https\n          serviceName: fishlee-api-gateway\n          environment: release\n          endpoints:\n            - path: /api/data\n              method: ANY\n            - path: /api/upload\n              method: ANY\n            - path: /api/data\n              method: OPTIONS\n            - path: /api/upload\n              method: OPTIONS\n",
+    "command": [
+      "login"
+    ],
+    "options": {
+      "platform": "tencent"
+    },
+    "orgId": "1c0cbf5f-148f-4949-b8aa-1bc36d341410",
+    "orgName": "fishlee",
+    "userId": "5KKftj1h54SlfHF8GJ",
+    "userName": "fishlee",
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  }
+}

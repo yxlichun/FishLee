@@ -17,17 +17,15 @@ SSH_USER="root"
 REMOTE_DIR="/root/fishlee"
 SSH_OPTS="-o StrictHostKeyChecking=no"
 [ -n "$SSH_KEY" ] && SSH_OPTS="$SSH_OPTS -i $SSH_KEY"
+RSYNC_SSH="ssh $SSH_OPTS"
 
 echo "==> 1. 构建前端..."
 cd "$(dirname "$0")/website"
 npm run build
 
 echo "==> 2. 同步文件到服务器..."
-# 上传前端构建产物
-rsync -avz $SSH_OPTS --delete dist/ "${SSH_USER}@${SERVER_IP}:${REMOTE_DIR}/dist/"
-
-# 上传服务器代码
-rsync -avz $SSH_OPTS ../server/index.js ../server/package.json "${SSH_USER}@${SERVER_IP}:${REMOTE_DIR}/"
+rsync -avz -e "$RSYNC_SSH" --delete dist/ "${SSH_USER}@${SERVER_IP}:${REMOTE_DIR}/dist/"
+rsync -avz -e "$RSYNC_SSH" ../server/index.js ../server/package.json "${SSH_USER}@${SERVER_IP}:${REMOTE_DIR}/"
 
 echo "==> 3. 服务器安装依赖 & 重启服务..."
 ssh $SSH_OPTS "${SSH_USER}@${SERVER_IP}" "
