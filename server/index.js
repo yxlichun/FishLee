@@ -43,14 +43,8 @@ const MIME = {
 async function tosGet(key) {
   try {
     const result = await tos.getObject({ bucket: Bucket, key });
-    const chunks = [];
-    return new Promise((resolve, reject) => {
-      result.data.content.on('data', (c) => chunks.push(c));
-      result.data.content.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
-      result.data.content.on('error', reject);
-    });
+    return Buffer.from(result.data).toString('utf-8');
   } catch (err) {
-    // 对象不存在时返回 null
     if (err.code === 'NoSuchKey' || err.statusCode === 404) return null;
     throw err;
   }
