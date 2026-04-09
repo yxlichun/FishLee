@@ -11,7 +11,6 @@ const isDevelopment = import.meta.env.DEV;
 
 async function uploadImage(file: File): Promise<string> {
   if (isDevelopment) {
-    // 开发环境：转成 base64 作为临时 URL
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target?.result as string);
@@ -55,7 +54,6 @@ export default function Notes() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 插入文字到当前光标位置
   const insertAtCursor = useCallback((text: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -64,7 +62,6 @@ export default function Notes() {
     const newContent =
       formData.content.substring(0, start) + text + formData.content.substring(end);
     setFormData((prev) => ({ ...prev, content: newContent }));
-    // 恢复光标位置
     requestAnimationFrame(() => {
       textarea.selectionStart = textarea.selectionEnd = start + text.length;
       textarea.focus();
@@ -93,14 +90,12 @@ export default function Notes() {
     }
   };
 
-  // 拖拽上传
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file) await handleImageUpload(file);
   };
 
-  // 粘贴上传
   const handlePaste = async (e: React.ClipboardEvent) => {
     const items = Array.from(e.clipboardData.items);
     const imageItem = items.find((item) => item.type.startsWith('image/'));
@@ -147,54 +142,48 @@ export default function Notes() {
     setFormData({ ...formData, tags: formData.tags.filter((t) => t !== tag) });
   };
 
-
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      {/* 标题栏 */}
-      <div className="mb-8 flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">学习笔记</h1>
-          <p className="text-gray-500 mt-2">支持 Markdown · 图片上传</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">学习笔记</h1>
+          <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">支持 Markdown · 图片上传</p>
         </div>
         {!isEditing && (
-          <button onClick={() => setIsEditing(true)} className="btn-primary flex items-center gap-2">
+          <button onClick={() => setIsEditing(true)} className="btn-primary flex items-center justify-center gap-2 py-2.5 sm:py-2">
             <Plus size={20} />
             新建笔记
           </button>
         )}
       </div>
 
-      {/* 编辑器 */}
       {isEditing && (
-        <div className="card mb-8">
-          {/* 工具栏 */}
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <h2 className="text-xl font-semibold text-gray-900">
+        <div className="card p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
               {editingId ? '编辑笔记' : '新建笔记'}
             </h2>
-            <div className="flex items-center gap-2">
-              {/* 视图切换 */}
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="flex items-center bg-gray-100 rounded-lg p-1 text-sm">
                 <button
                   onClick={() => setViewMode('edit')}
-                  className={`flex items-center gap-1 px-3 py-1 rounded-md transition-colors ${viewMode === 'edit' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-md transition-colors ${viewMode === 'edit' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   <Code size={14} />编辑
                 </button>
                 <button
                   onClick={() => setViewMode('split')}
-                  className={`flex items-center gap-1 px-3 py-1 rounded-md transition-colors ${viewMode === 'split' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-md transition-colors ${viewMode === 'split' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   分栏
                 </button>
                 <button
                   onClick={() => setViewMode('preview')}
-                  className={`flex items-center gap-1 px-3 py-1 rounded-md transition-colors ${viewMode === 'preview' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-md transition-colors ${viewMode === 'preview' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   <Eye size={14} />预览
                 </button>
               </div>
-              {/* 图片上传按钮 */}
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
@@ -221,19 +210,18 @@ export default function Notes() {
             </div>
           </div>
 
-          {/* 元信息 */}
-          <div className="flex gap-3 mb-4 flex-wrap">
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <input
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               placeholder="笔记标题"
-              className="flex-1 min-w-[200px] px-4 py-2 text-lg font-medium border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="flex-1 min-w-0 px-3 sm:px-4 py-2 text-base sm:text-lg font-medium border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
             <select
               value={formData.phaseId}
               onChange={(e) => setFormData({ ...formData, phaseId: Number(e.target.value) })}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             >
               {learningPath.map((phase) => (
                 <option key={phase.id} value={phase.id}>
@@ -243,7 +231,6 @@ export default function Notes() {
             </select>
           </div>
 
-          {/* 标签 */}
           <div className="mb-4">
             <div className="flex gap-2 mb-2">
               <input
@@ -254,12 +241,12 @@ export default function Notes() {
                 placeholder="添加标签（按回车）"
                 className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               />
-              <button onClick={addTag} className="btn-secondary text-sm">添加</button>
+              <button onClick={addTag} className="btn-secondary text-sm px-3">添加</button>
             </div>
             {formData.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {formData.tags.map((tag) => (
-                  <span key={tag} className="px-3 py-1 bg-brand-100 text-brand-700 rounded-full text-sm flex items-center gap-1">
+                  <span key={tag} className="px-2 sm:px-3 py-1 bg-brand-100 text-brand-700 rounded-full text-xs sm:text-sm flex items-center gap-1">
                     {tag}
                     <button onClick={() => removeTag(tag)} className="hover:text-brand-900 ml-1">
                       <X size={12} />
@@ -276,9 +263,8 @@ export default function Notes() {
             </div>
           )}
 
-          {/* 编辑区 / 分栏 / 预览 */}
           <div
-            className={`border border-gray-300 rounded-lg overflow-hidden ${viewMode === 'split' ? 'grid grid-cols-2' : ''}`}
+            className={`border border-gray-300 rounded-lg overflow-hidden ${viewMode === 'split' ? 'grid grid-cols-1 lg:grid-cols-2' : ''}`}
             onDrop={viewMode !== 'preview' ? handleDrop : undefined}
             onDragOver={viewMode !== 'preview' ? (e) => e.preventDefault() : undefined}
           >
@@ -289,12 +275,12 @@ export default function Notes() {
                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                 onPaste={handlePaste}
                 placeholder="支持 Markdown 格式，可直接粘贴或拖拽图片..."
-                className="w-full px-4 py-3 focus:outline-none resize-none font-mono text-sm leading-relaxed"
-                style={{ minHeight: 420 }}
+                className="w-full px-3 sm:px-4 py-3 focus:outline-none resize-none font-mono text-sm leading-relaxed"
+                style={{ minHeight: 300 }}
               />
             )}
             {viewMode === 'split' && (
-              <div className="border-l border-gray-300 px-4 py-3 overflow-y-auto bg-gray-50" style={{ minHeight: 420 }}>
+              <div className="border-t lg:border-t-0 lg:border-l border-gray-300 px-3 sm:px-4 py-3 overflow-y-auto bg-gray-50" style={{ minHeight: 300 }}>
                 {formData.content
                   ? <MarkdownRenderer content={formData.content} />
                   : <p className="text-gray-400 text-sm">预览区域</p>
@@ -302,7 +288,7 @@ export default function Notes() {
               </div>
             )}
             {viewMode === 'preview' && (
-              <div className="px-4 py-3 overflow-y-auto" style={{ minHeight: 420 }}>
+              <div className="px-3 sm:px-4 py-3 overflow-y-auto" style={{ minHeight: 300 }}>
                 {formData.content
                   ? <MarkdownRenderer content={formData.content} />
                   : <p className="text-gray-400 text-sm">暂无内容</p>
@@ -312,28 +298,26 @@ export default function Notes() {
           </div>
 
           <p className="text-xs text-gray-400 mt-2">
-            💡 支持粘贴图片（Ctrl+V）或拖拽图片到编辑区自动上传
+            支持粘贴图片（Ctrl+V）或拖拽图片到编辑区自动上传
           </p>
 
-          <button onClick={handleSubmit} className="btn-primary w-full flex items-center justify-center gap-2 mt-4">
+          <button onClick={handleSubmit} className="btn-primary w-full flex items-center justify-center gap-2 mt-4 py-2.5 sm:py-3">
             <Save size={18} />
             保存笔记
           </button>
         </div>
       )}
 
-      {/* 笔记列表 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {notes.length === 0 ? (
           <p className="text-gray-500 text-center py-12 col-span-2">还没有笔记，点击「新建笔记」开始记录</p>
         ) : (
           [...notes]
             .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
             .map((note) => (
-              <div key={note.id} className="card hover:shadow-md transition-shadow flex flex-col">
-                {/* 卡片头部 */}
+              <div key={note.id} className="card p-4 sm:p-6 hover:shadow-md transition-shadow flex flex-col">
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-gray-900 flex-1 mr-2">{note.title}</h3>
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex-1 mr-2 break-words">{note.title}</h3>
                   <div className="flex gap-1 flex-shrink-0">
                     <button
                       onClick={() => setExpandedNoteId(expandedNoteId === note.id ? null : note.id)}
@@ -359,13 +343,11 @@ export default function Notes() {
                   </div>
                 </div>
 
-                {/* 内容预览 */}
                 <div className={`flex-1 overflow-hidden mb-3 ${expandedNoteId === note.id ? '' : 'max-h-32'}`}>
                   <MarkdownRenderer content={note.content} />
                 </div>
 
-                {/* 底部 */}
-                <div className="flex items-center justify-between text-sm text-gray-500 pt-3 border-t border-gray-100 mt-auto">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-gray-500 pt-3 border-t border-gray-100 mt-auto">
                   <div className="flex flex-wrap gap-1">
                     {note.tags.map((tag) => (
                       <span key={tag} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">

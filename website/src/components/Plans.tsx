@@ -74,18 +74,17 @@ export default function Plans() {
   };
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
 
-      {/* ── 页头 ── */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">学习计划</h1>
-          <p className="text-gray-500 mt-2">为任意日期制定计划，打卡时关联确认</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">学习计划</h1>
+          <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">为任意日期制定计划，打卡时关联确认</p>
         </div>
         {!adding && (
           <button
             onClick={() => setAdding(true)}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary flex items-center justify-center gap-2 py-2.5 sm:py-2"
           >
             <Plus size={20} />
             新增计划
@@ -93,29 +92,27 @@ export default function Plans() {
         )}
       </div>
 
-      {/* ── 统计卡片 ── */}
       {total > 0 && (
-        <div className="grid grid-cols-3 gap-6 mb-8">
-          <div className="card">
-            <p className="text-sm text-gray-500">全部计划</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{total}</p>
+        <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
+          <div className="card p-3 sm:p-4">
+            <p className="text-xs sm:text-sm text-gray-500">全部计划</p>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{total}</p>
           </div>
-          <div className="card">
-            <p className="text-sm text-gray-500">已完成</p>
-            <p className="text-3xl font-bold text-green-600 mt-1">{completed}</p>
+          <div className="card p-3 sm:p-4">
+            <p className="text-xs sm:text-sm text-gray-500">已完成</p>
+            <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-1">{completed}</p>
           </div>
-          <div className="card">
-            <p className="text-sm text-gray-500">今日计划</p>
-            <p className="text-3xl font-bold text-brand-600 mt-1">{todayCount}</p>
+          <div className="card p-3 sm:p-4">
+            <p className="text-xs sm:text-sm text-gray-500">今日计划</p>
+            <p className="text-2xl sm:text-3xl font-bold text-brand-600 mt-1">{todayCount}</p>
           </div>
         </div>
       )}
 
-      {/* ── 新增表单 ── */}
       {adding && (
-        <div className="card mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+        <div className="card p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
               <CalendarDays size={20} className="text-brand-600" />
               新增学习计划
             </h2>
@@ -127,7 +124,6 @@ export default function Plans() {
             </button>
           </div>
 
-          {/* 日期选择 */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">选择日期</label>
             <div className="flex flex-wrap gap-2 mb-3">
@@ -135,7 +131,7 @@ export default function Plans() {
                 <button
                   key={val}
                   onClick={() => setNewDate(val)}
-                  className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                  className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg border transition-colors ${
                     newDate === val
                       ? 'bg-brand-600 text-white border-brand-600'
                       : 'border-gray-300 text-gray-600 hover:border-brand-400 hover:text-brand-600'
@@ -150,18 +146,17 @@ export default function Plans() {
               value={newDate}
               min={today}
               onChange={(e) => setNewDate(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm"
+              className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent text-sm"
             />
           </div>
 
-          {/* 计划内容 */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">计划内容</label>
             <textarea
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
               placeholder="计划学什么？写具体一点，打卡时更容易核对~"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
+              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
               rows={3}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAdd();
@@ -170,13 +165,13 @@ export default function Plans() {
             <p className="text-xs text-gray-400 mt-1">Ctrl/⌘ + Enter 快速保存</p>
           </div>
 
-          <div className="flex gap-3">
-            <button onClick={handleAdd} className="btn-primary flex-1">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button onClick={handleAdd} className="btn-primary flex-1 py-2.5 sm:py-3">
               保存计划
             </button>
             <button
               onClick={() => { setAdding(false); setNewContent(''); }}
-              className="btn-secondary"
+              className="btn-secondary py-2.5 sm:py-3"
             >
               取消
             </button>
@@ -184,15 +179,14 @@ export default function Plans() {
         </div>
       )}
 
-      {/* ── 计划列表 ── */}
       {dates.length === 0 ? (
-        <div className="card text-center py-16 text-gray-400">
-          <CalendarDays size={48} className="mx-auto mb-4 opacity-30" />
-          <p className="text-lg font-medium">还没有计划</p>
+        <div className="card text-center py-12 sm:py-16 text-gray-400">
+          <CalendarDays size={40} className="mx-auto mb-4 opacity-30" />
+          <p className="text-base sm:text-lg font-medium">还没有计划</p>
           <p className="text-sm mt-1">点击「新增计划」开始安排学习</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {dates.map((date) => {
             const group       = grouped[date];
             const isToday     = date === today;
@@ -205,21 +199,20 @@ export default function Plans() {
             return (
               <div key={date} className="card !p-0 overflow-hidden">
 
-                {/* 日期标题行 */}
                 <div
-                  className={`w-full flex items-center justify-between px-6 py-4 transition-colors ${
+                  className={`w-full flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-3 sm:py-4 transition-colors gap-2 sm:gap-0 ${
                     isToday ? 'bg-brand-50' : 'hover:bg-gray-50'
                   }`}
                 >
                   <button
-                    className="flex items-center gap-3 flex-1 text-left"
+                    className="flex items-center gap-2 sm:gap-3 flex-1 text-left"
                     onClick={() => toggleCollapse(date)}
                   >
                     <CalendarDays
                       size={18}
                       className={isToday ? 'text-brand-600' : isPast ? 'text-gray-400' : 'text-gray-500'}
                     />
-                    <span className={`font-semibold ${isToday ? 'text-brand-700' : 'text-gray-900'}`}>
+                    <span className={`font-semibold text-sm sm:text-base ${isToday ? 'text-brand-700' : 'text-gray-900'}`}>
                       {date}
                     </span>
                     {isToday && (
@@ -232,30 +225,29 @@ export default function Plans() {
                         已过期
                       </span>
                     )}
-                    <span className="text-sm text-gray-500">
+                    <span className="text-xs sm:text-sm text-gray-500">
                       {doneCount}/{group.length} 完成
                     </span>
                     {doneAll && (
-                      <span className="text-sm text-green-600 font-medium">✅ 全部完成</span>
+                      <span className="text-xs sm:text-sm text-green-600 font-medium">✅ 完成</span>
                     )}
                   </button>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {/* 延期按钮：仅对有未完成条目的过期日期显示 */}
                     {isPast && !isToday && hasUnfinished && (
                       <button
                         onClick={() => {
                           setReschedulingDate(reschedulingDate === date ? null : date);
                           setRescheduleTarget(format(new Date(), 'yyyy-MM-dd'));
                         }}
-                        className="flex items-center gap-1 px-2.5 py-1 text-xs text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
                         title="将未完成计划延期到新日期"
                       >
                         <CalendarClock size={14} />
                         延期
                       </button>
                     )}
-                    <button onClick={() => toggleCollapse(date)}>
+                    <button onClick={() => toggleCollapse(date)} className="p-1">
                       {isCollapsed
                         ? <ChevronDown size={16} className="text-gray-400" />
                         : <ChevronUp   size={16} className="text-gray-400" />
@@ -264,9 +256,8 @@ export default function Plans() {
                   </div>
                 </div>
 
-                {/* 延期面板 */}
                 {reschedulingDate === date && (
-                  <div className="px-6 py-4 bg-orange-50 border-t border-orange-100">
+                  <div className="px-4 sm:px-6 py-3 sm:py-4 bg-orange-50 border-t border-orange-100">
                     <p className="text-sm font-medium text-orange-800 mb-3">
                       将 {group.filter(p => !p.completed).length} 项未完成计划移至：
                     </p>
@@ -279,7 +270,7 @@ export default function Plans() {
                           <button
                             key={val}
                             onClick={() => setRescheduleTarget(val)}
-                            className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                            className={`px-2 sm:px-3 py-1 text-xs rounded-lg border transition-colors ${
                               rescheduleTarget === val
                                 ? 'bg-orange-500 text-white border-orange-500'
                                 : 'border-orange-300 text-orange-700 hover:bg-orange-100'
@@ -290,7 +281,7 @@ export default function Plans() {
                         );
                       })}
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                       <input
                         type="date"
                         value={rescheduleTarget}
@@ -314,17 +305,15 @@ export default function Plans() {
                   </div>
                 )}
 
-                {/* 计划条目 */}
                 {!isCollapsed && (
                   <div className="divide-y divide-gray-100 border-t border-gray-100">
                     {group.map((plan) => (
                       <div
                         key={plan.id}
-                        className={`flex items-start gap-4 px-6 py-4 ${
+                        className={`flex items-start gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 ${
                           plan.completed ? 'bg-green-50' : 'bg-white'
                         }`}
                       >
-                        {/* 勾选框 */}
                         <button
                           onClick={() => togglePlan(plan.id)}
                           className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center transition-colors ${
@@ -336,10 +325,9 @@ export default function Plans() {
                           {plan.completed && <Check size={12} className="text-white" />}
                         </button>
 
-                        {/* 内容 */}
                         <div className="flex-1 min-w-0">
                           {editingId === plan.id ? (
-                            <div className="flex gap-2">
+                            <div className="flex flex-col sm:flex-row gap-2">
                               <textarea
                                 value={editContent}
                                 onChange={(e) => setEditContent(e.target.value)}
@@ -347,7 +335,7 @@ export default function Plans() {
                                 rows={2}
                                 autoFocus
                               />
-                              <div className="flex flex-col gap-1.5">
+                              <div className="flex sm:flex-col gap-1.5">
                                 <button
                                   onClick={() => handleSaveEdit(plan.id)}
                                   className="p-1.5 bg-brand-600 text-white rounded-lg hover:bg-brand-700"
@@ -363,7 +351,7 @@ export default function Plans() {
                               </div>
                             </div>
                           ) : (
-                            <p className={`text-sm leading-relaxed ${
+                            <p className={`text-sm leading-relaxed break-words ${
                               plan.completed ? 'line-through text-gray-400' : 'text-gray-800'
                             }`}>
                               {plan.content}
@@ -371,7 +359,6 @@ export default function Plans() {
                           )}
                         </div>
 
-                        {/* 操作按钮 */}
                         {editingId !== plan.id && (
                           <div className="flex-shrink-0 flex gap-1">
                             <button

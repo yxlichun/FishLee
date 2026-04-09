@@ -29,3 +29,117 @@
     @apply bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium;
   }
 }
+
+/* Mobile Responsive Styles */
+@layer utilities {
+  /* Page padding adjustments for mobile */
+  .page-container {
+    @apply p-4 sm:p-6 lg:p-8;
+  }
+
+  .page-title {
+    @apply text-2xl sm:text-3xl font-bold text-gray-900;
+  }
+
+  .page-subtitle {
+    @apply text-sm sm:text-base text-gray-500 mt-1 sm:mt-2;
+  }
+
+  /* Card responsive padding */
+  .card-responsive {
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6;
+  }
+
+  /* Grid responsive columns */
+  .grid-responsive-2 {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-4;
+  }
+
+  .grid-responsive-3 {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+
+  .grid-responsive-4 {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4;
+  }
+
+  /* Form input responsive */
+  .input-responsive {
+    @apply w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent;
+  }
+
+  /* Button responsive */
+  .btn-responsive {
+    @apply px-3 sm:px-4 py-2 text-sm sm:text-base rounded-lg transition-colors font-medium;
+  }
+
+  /* Text responsive */
+  .text-responsive-sm {
+    @apply text-xs sm:text-sm;
+  }
+
+  .text-responsive-base {
+    @apply text-sm sm:text-base;
+  }
+
+  .text-responsive-lg {
+    @apply text-base sm:text-lg;
+  }
+
+  /* Flex responsive */
+  .flex-responsive {
+    @apply flex flex-col sm:flex-row;
+  }
+
+  /* Stack on mobile, side by side on desktop */
+  .stack-mobile {
+    @apply flex flex-col gap-4;
+  }
+
+  @screen sm {
+    .stack-mobile {
+      @apply flex-row;
+    }
+  }
+}
+
+/* Custom scrollbar for mobile menu */
+@media (max-width: 1023px) {
+  .mobile-menu-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Prevent body scroll when mobile menu is open */
+body.mobile-menu-open {
+  overflow: hidden;
+}
+
+/* Touch-friendly tap targets on mobile */
+@media (max-width: 640px) {
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  /* Adjust checkbox and radio size on mobile */
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 20px;
+    min-width: 20px;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

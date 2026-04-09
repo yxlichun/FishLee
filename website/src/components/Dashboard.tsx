@@ -178,72 +178,72 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">学习仪表盘</h1>
-        <p className="text-gray-500 mt-2">追踪你的学习进度和成就</p>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">学习仪表盘</h1>
+        <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">追踪你的学习进度和成就</p>
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="card">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
+        <div className="card p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">总体进度</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{overallProgress}%</p>
-              <p className="text-sm text-gray-500 mt-1">{completedTasks}/{totalTasks} 任务</p>
+              <p className="text-xs sm:text-sm text-gray-500">总体进度</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{overallProgress}%</p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">{completedTasks}/{totalTasks} 任务</p>
             </div>
-            <div className="w-12 h-12 bg-brand-100 rounded-lg flex items-center justify-center">
-              <CheckCircle2 className="text-brand-600" size={24} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-brand-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="text-brand-600" size={20} />
             </div>
           </div>
         </div>
 
-        <div className="card">
+        <div className="card p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">连续打卡</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{streak}</p>
-              <p className="text-sm text-gray-500 mt-1">天</p>
+              <p className="text-xs sm:text-sm text-gray-500">连续打卡</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{streak}</p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">天</p>
             </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Flame className="text-orange-600" size={24} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Flame className="text-orange-600" size={20} />
             </div>
           </div>
         </div>
 
-        <div className="card">
+        <div className="card p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">总打卡次数</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{checkIns.length}</p>
-              <p className="text-sm text-gray-500 mt-1">次</p>
+              <p className="text-xs sm:text-sm text-gray-500">总打卡次数</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{checkIns.length}</p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">次</p>
             </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <Calendar className="text-green-600" size={24} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Calendar className="text-green-600" size={20} />
             </div>
           </div>
         </div>
 
-        <div className="card">
+        <div className="card p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">学习笔记</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{notes.length}</p>
-              <p className="text-sm text-gray-500 mt-1">{totalHours.toFixed(1)}小时</p>
+              <p className="text-xs sm:text-sm text-gray-500">学习笔记</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{notes.length}</p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">{totalHours.toFixed(1)}小时</p>
             </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <FileText className="text-purple-600" size={24} />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <FileText className="text-purple-600" size={20} />
             </div>
           </div>
         </div>
       </div>
 
       {/* 学习热力图 */}
-      <div className="card mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">学习热力图</h2>
-          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+      <div className="card p-4 sm:p-6 mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">学习热力图</h2>
+          <div className="flex items-center gap-1 text-xs text-gray-500">
             <span>少</span>
             {HEATMAP_COLORS.map((c, i) => (
               <div key={i} className={`w-3 h-3 rounded-sm ${c.bg}`} />
@@ -252,10 +252,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="w-full">
-          <div className="relative w-full">
+        <div className="w-full overflow-x-auto">
+          <div className="relative min-w-[600px] sm:min-w-0">
             {/* 月份标签 */}
-            <div className="flex mb-1 ml-8">
+            <div className="flex mb-1 ml-6 sm:ml-8">
               {weeks.map((_, colIdx) => {
                 const monthLabel = monthLabels.find(m => m.col === colIdx);
                 return (
@@ -272,7 +272,7 @@ export default function Dashboard() {
               {/* 星期标签 */}
               <div className="flex flex-col gap-0.5 mr-1 flex-shrink-0">
                 {WEEKDAY_LABELS.map((label, i) => (
-                  <div key={i} className="h-4 w-6 flex items-center justify-end">
+                  <div key={i} className="h-3 sm:h-4 w-5 sm:w-6 flex items-center justify-end">
                     {(i === 1 || i === 3 || i === 5) && (
                       <span className="text-xs text-gray-400">{label}</span>
                     )}
@@ -296,6 +296,11 @@ export default function Dashboard() {
                           setTooltip({ day, x: rect.left, y: rect.top });
                         }}
                         onMouseLeave={() => setTooltip(null)}
+                        onTouchStart={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setTooltip({ day, x: rect.left, y: rect.top });
+                        }}
+                        onTouchEnd={() => setTimeout(() => setTooltip(null), 2000)}
                       />
                     );
                   })}
@@ -309,7 +314,7 @@ export default function Dashboard() {
         {tooltip && (
           <div
             className="fixed z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg"
-            style={{ left: tooltip.x, top: tooltip.y - 80 }}
+            style={{ left: Math.min(tooltip.x, window.innerWidth - 200), top: tooltip.y - 80 }}
           >
             <p className="font-medium mb-1">{tooltip.day.date}</p>
             {tooltip.day.score === 0 ? (
@@ -326,13 +331,13 @@ export default function Dashboard() {
       </div>
 
       {/* 各阶段进度图表 */}
-      <div className="card mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">各阶段完成情况</h2>
-        <ResponsiveContainer width="100%" height={300}>
+      <div className="card p-4 sm:p-6 mb-6 sm:mb-8">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">各阶段完成情况</h2>
+        <ResponsiveContainer width="100%" height={250}>
           <BarChart data={phaseProgress}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
+            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12 }} />
             <Tooltip />
             <Bar dataKey="完成率" fill="#5c7cfa" />
           </BarChart>
@@ -340,15 +345,15 @@ export default function Dashboard() {
       </div>
 
       {/* 最近打卡 */}
-      <div className="card">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">最近打卡记录</h2>
+      <div className="card p-4 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">最近打卡记录</h2>
         {sortedCheckIns.length === 0 ? (
           <p className="text-gray-500 text-center py-8">还没有打卡记录，开始你的学习之旅吧！</p>
         ) : (
           <div className="space-y-3">
             {sortedCheckIns.slice(0, 5).map((checkIn) => (
               <div key={checkIn.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                <div className="flex-shrink-0 w-20 text-center">
+                <div className="flex-shrink-0 w-16 sm:w-20 text-center">
                   <p className="text-sm font-medium text-gray-900">
                     {format(new Date(checkIn.timestamp), 'MM-dd')}
                   </p>
@@ -356,8 +361,8 @@ export default function Dashboard() {
                     {format(new Date(checkIn.timestamp), 'HH:mm')}
                   </p>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-700">{checkIn.content}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-700 break-words">{checkIn.content}</p>
                   <p className="text-xs text-gray-500 mt-1">{checkIn.duration}分钟 · 第{checkIn.phaseId}阶段</p>
                 </div>
               </div>
