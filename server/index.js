@@ -16,7 +16,7 @@ const DIST_DIR = path.join(__dirname, 'dist');
 
 const tos = new TosClient({
   accessKeyId: process.env.TOS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.TOS_SECRET_ACCESS_KEY,
+  accessKeySecret: process.env.TOS_SECRET_ACCESS_KEY,
   region: process.env.TOS_REGION,
   endpoint: process.env.TOS_ENDPOINT,
 });
