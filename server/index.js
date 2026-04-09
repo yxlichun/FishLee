@@ -1,25 +1,26 @@
 /**
- * Lighthouse Node.js 服务器
+ * Lighthouse Node.js 服务器（火山云 TOS 版本）
  * - 静态文件服务（前端 dist/）
- * - GET  /api/data    读 COS
- * - POST /api/data    写 COS
- * - POST /api/upload  图片上传 COS
+ * - GET  /api/data    读 TOS
+ * - POST /api/data    写 TOS
+ * - POST /api/upload  图片上传 TOS
  */
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const COS = require('cos-nodejs-sdk-v5');
+const { TosClient } = require('@volcengine/tos-sdk');
 
 const PORT = process.env.PORT || 3000;
 const DIST_DIR = path.join(__dirname, 'dist');
 
-const cos = new COS({
-  SecretId: process.env.COS_SECRET_ID,
-  SecretKey: process.env.COS_SECRET_KEY,
+const tos = new TosClient({
+  accessKeyId: process.env.TOS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.TOS_SECRET_ACCESS_KEY,
+  region: process.env.TOS_REGION,
+  endpoint: process.env.TOS_ENDPOINT,
 });
-const Bucket = process.env.COS_BUCKET;
-const Region = process.env.COS_REGION;
+const Bucket = process.env.TOS_BUCKET;
 const DATA_KEY = 'ai-pm-data.json';
 
 // ---------- MIME ----------
@@ -38,21 +39,25 @@ const MIME = {
   '.ttf':  'font/ttf',
 };
 
-// ---------- COS ----------
-function cosGet(key) {
-  return new Promise((resolve) => {
-    cos.getObject({ Bucket, Region, Key: key }, (err, data) => {
-      if (err) { resolve(null); return; }
-      resolve(data.Body.toString());
+// ---------- TOS helpers ----------
+async function tosGet(key) {
+  try {
+    const result = await tos.getObject({ bucket: Bucket, key });
+    const chunks = [];
+    return new Promise((resolve, reject) => {
+      result.data.content.on('data', (c) => chunks.push(c));
+      result.data.content.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+      result.data.content.on('error', reject);
     });
-  });
+  } catch (err) {
+    // 对象不存在时返回 null
+    if (err.code === 'NoSuchKey' || err.statusCode === 404) return null;
+    throw err;
+  }
 }
 
-function cosPut(key, body, contentType) {
-  return new Promise((resolve, reject) => {
-    cos.putObject({ Bucket, Region, Key: key, Body: body, ContentType: contentType },
-      (err) => { err ? reject(err) : resolve(); });
-  });
+async function tosPut(key, body, contentType) {
+  await tos.putObject({ bucket: Bucket, key, body, contentType });
 }
 
 function readBody(req) {
@@ -74,8 +79,7 @@ function send(res, status, data) {
 function serveStatic(res, filePath) {
   if (!fs.existsSync(filePath)) {
     // SPA fallback → index.html
-    const index = path.join(DIST_DIR, 'index.html');
-    const html = fs.readFileSync(index);
+    const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'));
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end(html);
     return;
@@ -101,7 +105,7 @@ const server = http.createServer(async (req, res) => {
   try {
     // ── GET /api/data ──
     if (method === 'GET' && urlPath === '/api/data') {
-      const raw = await cosGet(DATA_KEY);
+      const raw = await tosGet(DATA_KEY);
       if (raw) { send(res, 200, raw); }
       else { send(res, 200, { taskProgress: {}, checkIns: [], notes: [], bookmarks: [], inspirations: [], plans: [] }); }
       return;
@@ -112,7 +116,7 @@ const server = http.createServer(async (req, res) => {
       const buf = await readBody(req);
       const str = buf.toString('utf-8');
       JSON.parse(str); // 验证 JSON
-      await cosPut(DATA_KEY, str, 'application/json');
+      await tosPut(DATA_KEY, str, 'application/json');
       send(res, 200, { success: true });
       return;
     }
@@ -123,8 +127,8 @@ const server = http.createServer(async (req, res) => {
       const contentType = req.headers['x-content-type'] || 'image/png';
       const buf = await readBody(req);
       const key = `notes-images/${Date.now()}-${rawFilename}`;
-      await cosPut(key, buf, contentType);
-      const url = `https://${Bucket}.cos.${Region}.myqcloud.com/${key}`;
+      await tosPut(key, buf, contentType);
+      const url = `https://${Bucket}.tos-${process.env.TOS_REGION}.volces.com/${key}`;
       send(res, 200, { url });
       return;
     }
