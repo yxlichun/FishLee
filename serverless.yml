@@ -12,7 +12,8 @@ inputs:
       - .git/**
   handler: index.main_handler
   runtime: Nodejs16.13
-  region: ap-shanghai      # 与 COS 存储桶同地域
+  type: web
+  region: ap-guangzhou     # 与 COS 存储桶同地域
   memorySize: 128
   timeout: 10
   environment:

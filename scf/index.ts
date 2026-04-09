@@ -1,12 +1,14 @@
 /**
- * 腾讯云 SCF 函数入口
+ * 腾讯云 SCF Web 函数入口
+ * 监听 TENCENTCLOUD_PORT（默认 9000），由平台代理 HTTP 请求进来
  *
- * 路由规则（由 API 网关传入 path）：
+ * 路由：
  *   GET  /api/data    → 读取 COS JSON 数据
  *   POST /api/data    → 写入 COS JSON 数据
  *   POST /api/upload  → 上传图片到 COS
  */
 
+import http from 'http';
 import COS from 'cos-nodejs-sdk-v5';
 
 const cos = new COS({
@@ -38,87 +40,85 @@ function cosPut(key: string, body: string | Buffer, contentType: string): Promis
   });
 }
 
-// ---------- SCF 事件结构 ----------
-
-interface ScfEvent {
-  httpMethod: string;
-  path: string;
-  headers: Record<string, string>;
-  body?: string;              // API 网关透传时 body 已是字符串（可能 base64）
-  isBase64Encoded?: boolean;
+function readBody(req: http.IncomingMessage): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
 }
 
-interface ScfResponse {
-  statusCode: number;
-  headers: Record<string, string>;
-  body: string;
-  isBase64Encoded: boolean;
+function setCors(res: http.ServerResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-filename, x-content-type');
 }
 
-function resp(statusCode: number, data: unknown): ScfResponse {
-  return {
-    statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, x-filename, x-content-type',
-    },
-    body: JSON.stringify(data),
-    isBase64Encoded: false,
-  };
+function send(res: http.ServerResponse, status: number, data: unknown) {
+  const body = JSON.stringify(data);
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(body);
 }
 
-// ---------- 主入口 ----------
+// ---------- HTTP 服务器 ----------
 
-export const main_handler = async (event: ScfEvent): Promise<ScfResponse> => {
-  const method = (event.httpMethod || '').toUpperCase();
-  const path = event.path || '';
+const server = http.createServer(async (req, res) => {
+  setCors(res);
 
-  // OPTIONS 预检
-  if (method === 'OPTIONS') return resp(200, {});
+  const method = (req.method || '').toUpperCase();
+  const url = req.url || '';
+  // 去掉 query string
+  const path = url.split('?')[0];
+
+  if (method === 'OPTIONS') {
+    res.writeHead(200).end();
+    return;
+  }
 
   try {
     // ── GET /api/data ──────────────────────────────────
-    if (method === 'GET' && path.startsWith('/api/data')) {
+    if (method === 'GET' && path === '/api/data') {
       const raw = await cosGet(DATA_KEY);
-      if (raw) return resp(200, JSON.parse(raw));
-      return resp(200, { taskProgress: {}, checkIns: [], notes: [], bookmarks: [], inspirations: [], plans: [] });
+      if (raw) {
+        send(res, 200, JSON.parse(raw));
+      } else {
+        send(res, 200, { taskProgress: {}, checkIns: [], notes: [], bookmarks: [], inspirations: [], plans: [] });
+      }
+      return;
     }
 
     // ── POST /api/data ─────────────────────────────────
-    if (method === 'POST' && path.startsWith('/api/data')) {
-      const bodyStr = event.isBase64Encoded
-        ? Buffer.from(event.body || '', 'base64').toString('utf-8')
-        : (event.body || '{}');
-      // 验证合法 JSON
-      JSON.parse(bodyStr);
+    if (method === 'POST' && path === '/api/data') {
+      const buf = await readBody(req);
+      const bodyStr = buf.toString('utf-8');
+      JSON.parse(bodyStr); // 验证合法 JSON
       await cosPut(DATA_KEY, bodyStr, 'application/json');
-      return resp(200, { success: true });
+      send(res, 200, { success: true });
+      return;
     }
 
     // ── POST /api/upload ───────────────────────────────
-    if (method === 'POST' && path.startsWith('/api/upload')) {
-      const headers = event.headers || {};
-      const rawFilename = headers['x-filename'] || `image-${Date.now()}.png`;
+    if (method === 'POST' && path === '/api/upload') {
+      const rawFilename = (req.headers['x-filename'] as string) || `image-${Date.now()}.png`;
       const filename = decodeURIComponent(rawFilename);
-      const contentType = headers['x-content-type'] || 'image/png';
-
-      const bodyBuf = event.isBase64Encoded
-        ? Buffer.from(event.body || '', 'base64')
-        : Buffer.from(event.body || '', 'binary');
-
+      const contentType = (req.headers['x-content-type'] as string) || 'image/png';
+      const buf = await readBody(req);
       const key = `notes-images/${Date.now()}-${filename}`;
-      await cosPut(key, bodyBuf, contentType);
-
-      // 拼接公开访问 URL（需要存储桶已设置公有读）
-      const url = `https://${Bucket}.cos.${Region}.myqcloud.com/${key}`;
-      return resp(200, { url });
+      await cosPut(key, buf, contentType);
+      const fileUrl = `https://${Bucket}.cos.${Region}.myqcloud.com/${key}`;
+      send(res, 200, { url: fileUrl });
+      return;
     }
 
-    return resp(405, { error: 'Method not allowed' });
+    send(res, 404, { error: 'Not found' });
   } catch (error) {
-    console.error('SCF Error:', error);
-    return resp(500, { error: 'Internal server error', details: (error as Error).message });
+    console.error('Error:', error);
+    send(res, 500, { error: 'Internal server error', details: (error as Error).message });
   }
-};
+});
+
+const port = parseInt(process.env.TENCENTCLOUD_PORT || '9000', 10);
+server.listen(port, () => {
+  console.log(`fishlee-api listening on port ${port}`);
+});

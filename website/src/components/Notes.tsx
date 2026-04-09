@@ -4,7 +4,9 @@ import { learningPath } from '../data/learningPath';
 import { Plus, Edit2, Trash2, Save, X, Image, Eye, Code, Maximize2 } from 'lucide-react';
 import MarkdownRenderer from './MarkdownRenderer';
 
-const UPLOAD_URL = '/api/upload';
+const UPLOAD_URL = import.meta.env.VITE_API_BASE
+  ? `${import.meta.env.VITE_API_BASE}/api/upload`
+  : '/api/upload';
 const isDevelopment = import.meta.env.DEV;
 
 async function uploadImage(file: File): Promise<string> {

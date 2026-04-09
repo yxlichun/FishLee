@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { UserData, CheckIn, Note, Bookmark, Inspiration, Plan } from './types';
 
-const API_URL = '/api/data';
+const API_URL = import.meta.env.VITE_API_BASE
+  ? `${import.meta.env.VITE_API_BASE}/api/data`
+  : '/api/data';
 const STORAGE_KEY = 'ai-pm-learning-storage';
 const STORAGE_VERSION = 3;
 const isDevelopment = import.meta.env.DEV;
