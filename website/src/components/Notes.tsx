@@ -1,8 +1,9 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, lazy, Suspense } from 'react';
 import { useStore } from '../store';
 import { learningPath } from '../data/learningPath';
 import { Plus, Edit2, Trash2, Save, X, Image, Eye, Code, Maximize2 } from 'lucide-react';
-import MarkdownRenderer from './MarkdownRenderer';
+
+const MarkdownRenderer = lazy(() => import('./MarkdownRenderer'));
 
 const UPLOAD_URL = import.meta.env.VITE_API_BASE
   ? `${import.meta.env.VITE_API_BASE}/api/upload`
@@ -282,15 +283,24 @@ export default function Notes() {
             {viewMode === 'split' && (
               <div className="border-t lg:border-t-0 lg:border-l border-gray-300 px-3 sm:px-4 py-3 overflow-y-auto bg-gray-50" style={{ minHeight: 300 }}>
                 {formData.content
-                  ? <MarkdownRenderer content={formData.content} />
+                  ? (
+                    <Suspense fallback={<p className="text-gray-400 text-sm">加载预览中...</p>}>
+                      <MarkdownRenderer content={formData.content} />
+                    </Suspense>
+                  )
                   : <p className="text-gray-400 text-sm">预览区域</p>
                 }
               </div>
             )}
+
             {viewMode === 'preview' && (
               <div className="px-3 sm:px-4 py-3 overflow-y-auto" style={{ minHeight: 300 }}>
                 {formData.content
-                  ? <MarkdownRenderer content={formData.content} />
+                  ? (
+                    <Suspense fallback={<p className="text-gray-400 text-sm">加载预览中...</p>}>
+                      <MarkdownRenderer content={formData.content} />
+                    </Suspense>
+                  )
                   : <p className="text-gray-400 text-sm">暂无内容</p>
                 }
               </div>
@@ -344,7 +354,9 @@ export default function Notes() {
                 </div>
 
                 <div className={`flex-1 overflow-hidden mb-3 ${expandedNoteId === note.id ? '' : 'max-h-32'}`}>
-                  <MarkdownRenderer content={note.content} />
+                  <Suspense fallback={<p className="text-gray-400 text-sm">加载中...</p>}>
+                    <MarkdownRenderer content={note.content} />
+                  </Suspense>
                 </div>
 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-gray-500 pt-3 border-t border-gray-100 mt-auto">

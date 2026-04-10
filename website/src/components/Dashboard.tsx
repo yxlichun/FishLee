@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { learningPath } from '../data/learningPath';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CheckCircle2, Calendar, FileText, Flame } from 'lucide-react';
 import { format, addDays, parseISO } from 'date-fns';
+
+// 直接导入 recharts，通过代码分割优化
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // 热力图颜色层级（仿 GitHub 绿色调）
 const HEATMAP_COLORS = [
