@@ -11,8 +11,14 @@ const fs = require('fs');
 const path = require('path');
 const { TosClient } = require('@volcengine/tos-sdk');
 
+const https = require('https');
+
 const PORT = process.env.PORT || 3000;
 const DIST_DIR = path.join(__dirname, 'dist');
+
+// 豆包大模型配置
+const ARK_API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+const ARK_API_KEY = process.env.ARK_API_KEY || '';
 
 const tos = new TosClient({
   accessKeyId: process.env.TOS_ACCESS_KEY_ID,
@@ -124,6 +130,65 @@ const server = http.createServer(async (req, res) => {
       await tosPut(key, buf, contentType);
       const url = `https://${Bucket}.tos-${process.env.TOS_REGION}.volces.com/${key}`;
       send(res, 200, { url });
+      return;
+    }
+
+    // ── POST /api/ai/summary ──
+    if (method === 'POST' && urlPath === '/api/ai/summary') {
+      if (!ARK_API_KEY) {
+        send(res, 500, { error: 'ARK_API_KEY not configured' });
+        return;
+      }
+      const buf = await readBody(req);
+      const { prompt } = JSON.parse(buf.toString('utf-8'));
+      if (!prompt) {
+        send(res, 400, { error: 'prompt is required' });
+        return;
+      }
+
+      const arkBody = JSON.stringify({
+        model: 'doubao-seed-2-0-lite-260215',
+        messages: [
+          { role: 'system', content: '你是一个学习助手，帮助用户总结和回顾每日学习情况。请用简洁、鼓励性的语气回复，使用中文。回复控制在 300 字以内。' },
+          { role: 'user', content: prompt },
+        ],
+      });
+
+      const arkUrl = new URL(ARK_API_URL);
+      const arkReq = https.request({
+        hostname: arkUrl.hostname,
+        path: arkUrl.pathname,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${ARK_API_KEY}`,
+          'Content-Length': Buffer.byteLength(arkBody),
+        },
+      }, (arkRes) => {
+        let data = '';
+        arkRes.on('data', (chunk) => { data += chunk; });
+        arkRes.on('end', () => {
+          try {
+            const result = JSON.parse(data);
+            if (result.choices && result.choices[0]) {
+              send(res, 200, { content: result.choices[0].message.content });
+            } else if (result.error) {
+              send(res, 502, { error: result.error.message || 'AI API error' });
+            } else {
+              send(res, 502, { error: 'Unexpected AI response', raw: data });
+            }
+          } catch {
+            send(res, 502, { error: 'Failed to parse AI response', raw: data });
+          }
+        });
+      });
+
+      arkReq.on('error', (err) => {
+        send(res, 502, { error: `AI API request failed: ${err.message}` });
+      });
+
+      arkReq.write(arkBody);
+      arkReq.end();
       return;
     }
 

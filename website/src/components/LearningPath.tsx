@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore, useGoalData } from '../store';
+import { Resource } from '../types';
 import { ChevronDown, ChevronRight, CheckCircle2, ExternalLink, Plus, Pencil, Trash2, X, Check } from 'lucide-react';
 
 // ── 路径新建/编辑弹窗 ────────────────────────────────────────
@@ -67,7 +68,7 @@ interface PhaseModalProps {
   onClose: () => void;
 }
 
-function PhaseModal({ pathId, initial, onSave, onClose }: PhaseModalProps) {
+function PhaseModal({ initial, onSave, onClose }: PhaseModalProps) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [subtitle, setSubtitle] = useState(initial?.subtitle ?? '');
   const [month, setMonth] = useState(initial?.month.toString() ?? '1');
@@ -164,7 +165,7 @@ interface SectionModalProps {
   onClose: () => void;
 }
 
-function SectionModal({ phaseId, initial, onSave, onClose }: SectionModalProps) {
+function SectionModal({ initial, onSave, onClose }: SectionModalProps) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [duration, setDuration] = useState(initial?.duration ?? '');
 
@@ -226,7 +227,7 @@ interface TaskModalProps {
   onClose: () => void;
 }
 
-function TaskModal({ phaseId, sectionId, initial, onSave, onClose }: TaskModalProps) {
+function TaskModal({ initial, onSave, onClose }: TaskModalProps) {
   const [text, setText] = useState(initial?.text ?? '');
 
   return (
@@ -278,7 +279,7 @@ interface ResourceModalProps {
   onClose: () => void;
 }
 
-function ResourceModal({ phaseId, sectionId, initial, onSave, onClose }: ResourceModalProps) {
+function ResourceModal({ initial, onSave, onClose }: ResourceModalProps) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [url, setUrl] = useState(initial?.url ?? '');
   const [type, setType] = useState(initial?.type ?? 'article');
@@ -513,7 +514,7 @@ export default function LearningPath() {
   // 资源管理方法
   const handleCreateResource = async (phaseId: number, sectionId: string, resource: { title: string; url?: string; type: string; description?: string }) => {
     if (activePath) {
-      await addResource(activePath.id, phaseId, sectionId, resource);
+      await addResource(activePath.id, phaseId, sectionId, resource as Resource);
     }
     setShowResourceModal(null);
     setEditingResource(null);
@@ -521,7 +522,7 @@ export default function LearningPath() {
 
   const handleEditResource = async (resource: { title: string; url?: string; type: string; description?: string }) => {
     if (activePath && editingResource) {
-      await updateResource(activePath.id, editingResource.phaseId, editingResource.sectionId, editingResource.resourceId, resource);
+      await updateResource(activePath.id, editingResource.phaseId, editingResource.sectionId, editingResource.resourceId, resource as Partial<Resource>);
     }
     setShowResourceModal(null);
     setEditingResource(null);

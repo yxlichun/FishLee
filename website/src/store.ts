@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { UserData, Goal, CheckIn, Note, Bookmark, Inspiration, Plan, LearningPath, Phase } from './types';
+import { UserData, Goal, CheckIn, Note, Bookmark, Inspiration, Plan, LearningPath, Phase, Section, Task, Resource } from './types';
 import { learningPath as builtinPhases } from './data/learningPath';
 
 const API_URL = import.meta.env.VITE_API_BASE
@@ -211,8 +211,8 @@ interface AppStore extends UserData {
   deleteTask: (pathId: string, phaseId: number, sectionId: string, taskId: string) => Promise<void>;
   
   // resources
-  addResource:    (pathId: string, phaseId: number, sectionId: string, resource: Omit<Resource, 'id'>) => Promise<void>;
-  updateResource: (pathId: string, phaseId: number, sectionId: string, resourceId: number, updates: Partial<Omit<Resource, 'id'>>) => Promise<void>;
+  addResource:    (pathId: string, phaseId: number, sectionId: string, resource: Resource) => Promise<void>;
+  updateResource: (pathId: string, phaseId: number, sectionId: string, resourceId: number, updates: Partial<Resource>) => Promise<void>;
   deleteResource: (pathId: string, phaseId: number, sectionId: string, resourceId: number) => Promise<void>;
 
   exportData: () => string;
@@ -245,10 +245,13 @@ export const useStore = create<AppStore>()(
           const blobRaw = await res.json();
           const blobData = parseUserData(blobRaw);
 
+          // 检查是否有有效的目标数据
+          const hasValidGoals = blobData.goals && blobData.goals.length > 0;
           const localUpdated = get()._lastUpdated;
           const blobUpdated  = blobData._lastUpdated ?? '';
 
-          if (!localUpdated || (blobUpdated && blobUpdated > localUpdated)) {
+          // 只有当 API 返回了有效数据且时间戳更新时，才更新本地数据
+          if (hasValidGoals && (!localUpdated || (blobUpdated && blobUpdated > localUpdated))) {
             set({ ...blobData, isLoading: false });
             // 如果旧格式需要迁移，回写
             if (!blobRaw.goals) {
@@ -256,7 +259,11 @@ export const useStore = create<AppStore>()(
             }
           } else {
             set({ isLoading: false });
-            await get().saveData();
+            // 如果 API 返回空数据，使用本地默认数据并保存到服务器
+            const { goals, activeGoalId } = get();
+            if (goals.length > 0) {
+              await get().saveData();
+            }
           }
         } catch {
           set({ isLoading: false });
@@ -557,7 +564,7 @@ export const useStore = create<AppStore>()(
                 if (ph.id !== phaseId) return ph;
                 return {
                   ...ph,
-                  sections: [...ph.sections, { ...section, id: `sec-${Date.now()}` }],
+                  sections: [...ph.sections, { ...section, id: `sec-${Date.now()}` } as Section],
                 };
               }),
               updatedAt: new Date().toISOString(),
@@ -625,7 +632,7 @@ export const useStore = create<AppStore>()(
                     if (sec.id !== sectionId) return sec;
                     return {
                       ...sec,
-                      tasks: [...sec.tasks, { ...task, id: `task-${Date.now()}` }],
+                      tasks: [...sec.tasks, { ...task, id: `task-${Date.now()}` } as Task],
                     };
                   }),
                 };

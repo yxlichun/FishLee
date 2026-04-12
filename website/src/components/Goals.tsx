@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Target, BookOpen, FileText, Calendar, ChevronRight, X } from 'lucide-react';
+import { Plus, Target, BookOpen, FileText, Calendar, ChevronRight, X, Fish, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '../store';
 import { Goal } from '../types';
 import { format, addDays, parseISO } from 'date-fns';
@@ -172,6 +172,85 @@ export default function Goals() {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [tooltip, setTooltip] = useState<{ day: DayData; x: number; y: number } | null>(null);
+  const [showFishPanel, setShowFishPanel] = useState(false);
+  const [aiSummary, setAiSummary] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const AI_URL = import.meta.env.VITE_API_BASE
+    ? `${import.meta.env.VITE_API_BASE}/api/ai/summary`
+    : '/api/ai/summary';
+
+  const buildPrompt = useCallback(() => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const parts: string[] = [];
+    parts.push(`今天是 ${today}。`);
+
+    goals.forEach((goal) => {
+      parts.push(`\n## 目标：${goal.title}`);
+      if (goal.description) parts.push(`描述：${goal.description}`);
+
+      // 今日计划
+      const todayPlans = goal.plans.filter((p) => p.date === today);
+      if (todayPlans.length > 0) {
+        parts.push('今日计划：');
+        todayPlans.forEach((p) => parts.push(`- [${p.completed ? '已完成' : '未完成'}] ${p.content}`));
+      }
+
+      // 学习进度
+      const totalTasks = goal.learningPaths.reduce(
+        (sum, lp) => sum + lp.phases.reduce(
+          (s, ph) => s + ph.sections.reduce((t, sec) => t + sec.tasks.length, 0), 0
+        ), 0
+      );
+      const completedTasks = totalTasks > 0
+        ? Object.keys(goal.taskProgress).filter((k) => goal.taskProgress[k]).length
+        : 0;
+      if (totalTasks > 0) {
+        parts.push(`路径进度：${completedTasks}/${totalTasks} (${Math.round((completedTasks / totalTasks) * 100)}%)`);
+      }
+
+      // 最近打卡
+      const recentCheckIns = goal.checkIns
+        .filter((c) => !isNaN(new Date(c.timestamp).getTime()))
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 3);
+      if (recentCheckIns.length > 0) {
+        parts.push('最近打卡：');
+        recentCheckIns.forEach((c) => {
+          parts.push(`- ${format(new Date(c.timestamp), 'MM-dd')} ${c.duration}分钟: ${c.content.slice(0, 80)}`);
+        });
+      }
+
+      // 笔记数
+      parts.push(`笔记：${goal.notes.length} 篇，资源收藏：${goal.bookmarks.length} 个`);
+    });
+
+    parts.push('\n请根据以上信息，给出今日学习总结和建议。包括：完成了什么、还有什么待办、接下来的建议。');
+    return parts.join('\n');
+  }, [goals]);
+
+  const fetchAiSummary = useCallback(async () => {
+    setAiLoading(true);
+    setAiError(null);
+    setAiSummary('');
+    try {
+      const res = await fetch(AI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: buildPrompt() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      setAiSummary(data.content);
+    } catch (err) {
+      setAiError((err as Error).message);
+    } finally {
+      setAiLoading(false);
+    }
+  }, [AI_URL, buildPrompt]);
 
   // 颜色映射
   const colorMap: Record<string, string> = {
@@ -400,6 +479,84 @@ export default function Goals() {
           onClose={() => setShowModal(false)}
           onAdd={handleAddGoal}
         />
+      )}
+
+      {/* 悬浮鱼形按钮 */}
+      <button
+        onClick={() => {
+          const opening = !showFishPanel;
+          setShowFishPanel(opening);
+          if (opening && !aiSummary && !aiLoading) fetchAiSummary();
+        }}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-110 transition-all duration-300 z-40"
+        title="智能助手"
+      >
+        <Fish size={24} />
+      </button>
+
+      {/* AI 总结面板 */}
+      {showFishPanel && (
+        <div className="fixed bottom-24 right-6 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-40 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+              <Fish size={18} className="text-blue-500" />
+              今日学习总结
+            </h3>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={fetchAiSummary}
+                disabled={aiLoading}
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40"
+                title="重新生成"
+              >
+                <RefreshCw size={15} className={`text-gray-500 ${aiLoading ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={() => setShowFishPanel(false)}
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={15} className="text-gray-500" />
+              </button>
+            </div>
+          </div>
+
+          <div className="px-5 py-4 max-h-80 overflow-y-auto">
+            {aiLoading && (
+              <div className="flex items-center justify-center py-8 text-gray-400">
+                <Loader2 size={20} className="animate-spin mr-2" />
+                <span className="text-sm">正在生成总结...</span>
+              </div>
+            )}
+
+            {aiError && (
+              <div className="text-sm">
+                <p className="text-red-500 mb-3">生成失败：{aiError}</p>
+                <button onClick={fetchAiSummary} className="text-brand-600 hover:text-brand-700 text-sm font-medium">
+                  点击重试
+                </button>
+              </div>
+            )}
+
+            {!aiLoading && !aiError && aiSummary && (
+              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                {aiSummary}
+              </div>
+            )}
+
+            {!aiLoading && !aiError && !aiSummary && (
+              <div className="text-center py-8 text-gray-400">
+                <Fish size={32} className="mx-auto mb-2 opacity-40" />
+                <p className="text-sm">点击下方按钮生成今日总结</p>
+                <button
+                  onClick={fetchAiSummary}
+                  className="mt-3 btn-primary text-sm px-4 py-1.5"
+                >
+                  生成总结
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
