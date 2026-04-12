@@ -351,7 +351,7 @@ export default function Goals() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-10 sm:pt-0">
       {/* Hero: 热力图背景 + 标题 */}
       <div className="relative overflow-hidden bg-white">
         {/* 热力图层 */}
@@ -465,7 +465,7 @@ export default function Goals() {
       </div>
 
       {/* 目标列表 */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10 pb-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 sm:mt-4 relative z-10 pb-12">
         <div className="space-y-3">
           {goals.map((goal) => (
           <GoalCard
@@ -505,7 +505,7 @@ export default function Goals() {
           setShowFishPanel(opening);
           if (opening && !aiSummary && !aiLoading) fetchAiSummary();
         }}
-        className="fixed bottom-13 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full shadow-xl flex items-center justify-center text-white hover:scale-110 transition-all duration-300 z-40 animate-float"
+        className="fixed bottom-10 sm:bottom-14 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full shadow-xl flex items-center justify-center text-white hover:scale-110 transition-all duration-300 z-40"
         title="智能助手"
       >
         <div className="animate-swim">
@@ -515,7 +515,7 @@ export default function Goals() {
 
       {/* AI 总结面板 */}
       {showFishPanel && (
-        <div className="fixed bottom-28 left-1/2 transform -translate-x-1/2 w-80 sm:w-96 md:w-[480px] bg-white rounded-2xl shadow-2xl border border-gray-200 z-40 overflow-hidden">
+        <div className="fixed bottom-24 sm:bottom-32 left-1/2 transform -translate-x-1/2 w-80 sm:w-96 md:w-[480px] bg-white rounded-2xl shadow-2xl border border-gray-200 z-40 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50">
             <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <Fish size={20} className="text-blue-500" />

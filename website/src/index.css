@@ -147,10 +147,10 @@ body.mobile-menu-open {
 /* Fish animation */
 @keyframes float {
   0%, 100% {
-    transform: translateX(-50%) translateY(0);
+    transform: translate(-50%, 0);
   }
   50% {
-    transform: translateX(-50%) translateY(-8px);
+    transform: translate(-50%, -8px);
   }
 }
 
