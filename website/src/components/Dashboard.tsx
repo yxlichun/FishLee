@@ -105,7 +105,7 @@ export default function Dashboard() {
     }
   }
 
-  // 计算总学习时长
+  // 计算总任务时长
   const totalHours = checkIns.reduce((sum, c) => sum + c.duration, 0) / 60;
 
   // ── 热力图数据计算 ──────────────────────────────────────────
@@ -205,8 +205,8 @@ export default function Dashboard() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">学习仪表盘</h1>
-        <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">追踪你的学习进度和成就</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">任务仪表盘</h1>
+        <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">追踪你的任务进度和成就</p>
       </div>
 
       {/* 统计卡片 */}
@@ -264,10 +264,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 学习热力图 */}
+      {/* 打卡热力图 */}
       <div className="card p-4 sm:p-6 mb-6 sm:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">学习热力图</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">打卡热力图</h2>
           <div className="flex items-center gap-1 text-xs text-gray-500">
             <span>少</span>
             {HEATMAP_COLORS.map((c, i) => (
@@ -341,7 +341,7 @@ export default function Dashboard() {
           >
             <p className="font-medium mb-1">{tooltip.day.date}</p>
             {tooltip.day.score === 0 ? (
-              <p className="text-gray-400">无学习活动</p>
+              <p className="text-gray-400">无任务活动</p>
             ) : (
               <>
                 {tooltip.day.checkInCount > 0 && <p>打卡 {tooltip.day.checkInCount} 次 · {tooltip.day.studyMinutes} 分钟</p>}
@@ -371,7 +371,7 @@ export default function Dashboard() {
       <div className="card p-4 sm:p-6">
         <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">最近打卡记录</h2>
         {sortedCheckIns.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">还没有打卡记录，开始你的学习之旅吧！</p>
+          <p className="text-gray-500 text-center py-8">还没有打卡记录，开始你的任务之旅吧！</p>
         ) : (
           <div className="space-y-3">
             {sortedCheckIns.slice(0, 5).map((checkIn) => (

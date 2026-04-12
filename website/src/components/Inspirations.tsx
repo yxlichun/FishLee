@@ -84,7 +84,7 @@ export default function Inspirations() {
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">灵感</h1>
-          <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">捕捉学习中的灵光一现</p>
+          <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">捕捉脑中的灵光一现</p>
         </div>
         {!isCreating && (
           <button onClick={() => setIsCreating(true)} className="btn-primary flex items-center justify-center gap-2 py-2.5 sm:py-2">

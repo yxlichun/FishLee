@@ -65,7 +65,7 @@ export default function CheckIn() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">每日打卡</h1>
-        <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">记录你的学习进展</p>
+        <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">记录你的任务进展</p>
       </div>
 
       {/* 今日计划回顾 */}
@@ -107,7 +107,7 @@ export default function CheckIn() {
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">学习内容</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">任务内容</label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -119,7 +119,7 @@ export default function CheckIn() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">学习时长（分钟）</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">时长（分钟）</label>
               <input
                 type="number"
                 value={duration}
@@ -129,7 +129,7 @@ export default function CheckIn() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">学习阶段</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">任务阶段</label>
               <select
                 value={phaseId}
                 onChange={(e) => setPhaseId(Number(e.target.value))}

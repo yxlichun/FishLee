@@ -355,7 +355,7 @@ export default function Goals() {
       {/* Hero: 热力图背景 + 标题 */}
       <div className="relative overflow-hidden bg-white">
         {/* 热力图层 */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-1 pb-16">
           <div className="w-full overflow-x-auto opacity-40">
             <div className="relative min-w-0">
               <div className="flex gap-0.5">
