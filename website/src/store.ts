@@ -260,7 +260,7 @@ export const useStore = create<AppStore>()(
           } else {
             set({ isLoading: false });
             // 如果 API 返回空数据，使用本地默认数据并保存到服务器
-            const { goals, activeGoalId } = get();
+            const { goals } = get();
             if (goals.length > 0) {
               await get().saveData();
             }
