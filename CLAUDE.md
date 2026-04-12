@@ -16,7 +16,7 @@
 
 ## 项目概述
 
-AI PM 学习路径管理网站，用于追踪 6 个月 AI 产品经理转型计划。功能包括：学习进度追踪、每日打卡、学习计划、Markdown 笔记（支持图片上传）、资源收藏、灵感记录。
+安石 —— AI 辅助学习路径管理网站，支持多目标管理。用户可以创建多个学习/生活目标（Goal），每个目标下独立管理学习路径、进度追踪、每日打卡、学习计划、Markdown 笔记（支持图片上传）、资源收藏、灵感记录。
 
 ## 开发命令
 
@@ -33,7 +33,10 @@ npx tsc --noEmit   # 仅类型检查（无测试）
 ## 技术栈
 
 - **前端**: React 19 + TypeScript + Vite 6 + Tailwind CSS 3 + Zustand 5
-- **路由**: React Router 7，Layout 组件包裹所有页面
+- **路由**: React Router 7，`/goals` 为落地页，`/goals/:goalId` 下 Layout 组件包裹所有子页面
+- **后端**: Node.js 原生 HTTP 服务器（`server/index.js`），pm2 进程管理
+- **存储**: 火山云 TOS 对象存储（`@volcengine/tos-sdk`），桶名 `fishlee`
+- **部署**: 火山云轻量服务器（上海），GitHub Actions 自动部署
 - **Markdown**: react-markdown + remark-gfm + react-syntax-highlighter
 - **图表**: recharts（仅 Dashboard）
 - **图标**: lucide-react
@@ -43,29 +46,64 @@ npx tsc --noEmit   # 仅类型检查（无测试）
 
 ```
 FishLee/
-├── api/                    # Vercel Serverless Functions
-│   ├── data.ts             # 数据读写 API（GET/POST）
-│   └── upload.ts           # 图片上传 API
-├── vercel.json             # Vercel 部署配置
-├── CLAUDE.md
-└── website/
+├── .github/
+│   └── workflows/
+│       └── deploy.yml          # GitHub Actions 部署流水线
+├── api/                        # Vercel Serverless Functions（已弃用）
+│   ├── data.ts                 # 旧版数据读写 API（Vercel Blob）
+│   └── upload.ts               # 旧版图片上传 API
+├── scf/                        # 腾讯云 SCF 云函数（已弃用）
+│   ├── index.ts                # 云函数入口
+│   ├── upload-to-cos.js        # COS 对象存储上传脚本
+│   ├── package.json            # SCF 依赖
+│   └── tsconfig.json           # SCF TypeScript 配置
+├── server/                     # 生产环境 Node.js 服务器（当前使用）
+│   ├── index.js                # HTTP 服务器：静态文件 + API 代理（火山云 TOS）
+│   └── package.json            # server 依赖（@volcengine/tos-sdk）
+├── leadership/                 # 产品规划与学习文档
+│   ├── AI产品经理学习路径.md      # 学习路径 v1 规划
+│   ├── AI产品经理学习路径_v2.md   # 学习路径 v2 规划
+│   ├── AboutMe.md              # 个人介绍
+│   ├── 分享&课程规划.md          # 课程分享计划
+│   ├── 学习路径产品升级建议.md    # 产品升级路线图（当前执行中）
+│   ├── 晋升专家_课程与分享规划.md # 晋升课程规划
+│   ├── 晋升专家_项目准备.md      # 晋升项目材料
+│   └── 课程一_当实现变得廉价.md   # 课程内容稿
+├── vercel.json                 # Vercel 部署配置（已弃用）
+├── serverless.yml              # 腾讯云 Serverless 配置（已弃用）
+├── deploy.sh                   # 手动部署脚本（rsync + pm2 restart）
+├── package.json                # 根目录 package.json
+├── CLAUDE.md                   # Claude Code 项目上下文
+├── DEPLOY.md                   # 部署手册
+└── website/                    # 前端主项目（React + Vite）
+    ├── index.html              # Vite 入口 HTML
+    ├── package.json            # 前端依赖（React, Zustand, Tailwind 等）
+    ├── vite.config.ts          # Vite 构建配置（分包策略、代理等）
+    ├── tsconfig.json           # TypeScript 配置（严格模式）
+    ├── tailwind.config.js      # Tailwind CSS 配置（brand 色系）
+    ├── postcss.config.js       # PostCSS 配置
+    ├── .env.production         # 生产环境变量（API 地址）
+    ├── start.sh                # 本地启动脚本
     └── src/
-        ├── types.ts        # 所有数据类型定义
-        ├── store.ts        # Zustand store（唯一数据源）
-        ├── App.tsx          # 路由定义
-        ├── index.css        # Tailwind + 自定义组件类
+        ├── main.tsx            # 应用入口，挂载 React
+        ├── App.tsx             # 路由定义（/goals 嵌套路由，lazy 加载）
+        ├── types.ts            # 所有数据类型定义（Goal, UserData 等）
+        ├── store.ts            # Zustand store（状态管理 + 双层持久化 + Goal 选择器 hook）
+        ├── index.css           # Tailwind 基础 + 自定义组件类
+        ├── vite-env.d.ts       # Vite 类型声明
         ├── data/
-        │   └── learningPath.ts  # 静态学习路径数据
+        │   └── learningPath.ts # 静态学习路径数据（内置 AI PM 路径模板）
         └── components/
-            ├── Layout.tsx         # 侧边栏 + 路由出口
-            ├── Dashboard.tsx      # 仪表盘
-            ├── LearningPath.tsx   # 学习路径
-            ├── CheckIn.tsx        # 每日打卡
-            ├── Plans.tsx          # 学习计划
-            ├── Notes.tsx          # 学习笔记
-            ├── Resources.tsx      # 资源收藏
-            ├── Inspirations.tsx   # 灵感记录
-            └── MarkdownRenderer.tsx # Markdown 渲染组件
+            ├── Layout.tsx           # 侧边栏导航 + 移动端菜单 + Goal 同步 + 路由出口
+            ├── Goals.tsx            # 目标列表落地页（/goals）
+            ├── Dashboard.tsx        # 仪表盘（进度统计、热力图、阶段图表）
+            ├── LearningPath.tsx     # 学习路径展示（阶段→章节→任务树）
+            ├── CheckIn.tsx          # 每日打卡（记录学习内容和时长）
+            ├── Plans.tsx            # 学习计划（每日待办，支持完成状态）
+            ├── Notes.tsx            # 学习笔记（Markdown 编辑器，支持图片上传）
+            ├── Resources.tsx        # 资源收藏（书签管理，分类浏览）
+            ├── Inspirations.tsx     # 灵感记录（便签卡片，多色标签）
+            └── MarkdownRenderer.tsx # Markdown 渲染（代码高亮、GFM 支持）
 ```
 
 ## 数据持久化架构（⚠️ 最易出错，务必仔细遵守）
@@ -74,20 +112,22 @@ FishLee/
 
 | 层 | 技术 | 用途 |
 |---|------|------|
-| 远程 | Vercel Blob（`@vercel/blob`） | 生产环境持久化，支持跨设备 |
+| 远程 | 火山云 TOS（`@volcengine/tos-sdk`） | 生产环境持久化，数据文件 `ai-pm-data.json` |
 | 本地 | Zustand `persist` → localStorage | 开发环境持久化 + 生产环境缓存 |
 
 ### 核心机制
 
 - `isDevelopment`（`import.meta.env.DEV`）区分环境
   - **开发**：`saveData()` 只写 localStorage（persist 自动），不调 API
-  - **生产**：`saveData()` 先 `set({ _lastUpdated })`，再 POST 到 Blob
-- `loadData()` 对比 localStorage 和 Blob 的 `_lastUpdated` 时间戳，取较新的
+  - **生产**：`saveData()` 先 `set({ _lastUpdated })`，再 POST 到 TOS
+- `loadData()` 对比 localStorage 和 TOS 的 `_lastUpdated` 时间戳，取较新的
 - API 失败时静默降级，保留 localStorage 数据
 
 ### ⚠️ 新增数据字段检查清单
 
-**新增字段时必须在以下 7 个位置全部添加，缺一不可：**
+**数据架构**: 所有业务数据嵌套在 `Goal` 实体内部。`UserData = { goals: Goal[]; activeGoalId: string | null }`。每个 Goal 包含独立的 taskProgress、checkIns、notes、bookmarks、inspirations、plans、learningPaths、activePathId。
+
+**新增 Goal 级字段时必须在以下 7 个位置全部添加，缺一不可：**
 
 1. `types.ts` — `UserData` 接口
 2. `store.ts` — 初始 state 默认值
@@ -101,22 +141,37 @@ FishLee/
 
 ### API 端点
 
-- `GET /api/data` — 从 Blob 读取全量 JSON
-- `POST /api/data` — 全量覆写 Blob（`addRandomSuffix: false`，pathname 固定为 `ai-pm-data.json`）
-- `POST /api/upload` — 图片上传到 Blob `notes-images/` 目录，返回 `{ url }`
+API 由 `server/index.js` 提供，运行在火山云轻量服务器上（pm2 管理）：
+
+- `GET /api/data` — 从 TOS 读取全量 JSON（`ai-pm-data.json`）
+- `POST /api/data` — 全量覆写 TOS 中的 JSON
+- `POST /api/upload` — 图片上传到 TOS `notes-images/` 目录，返回 `{ url }`
+
+### 部署
+
+- **生产服务器**：火山云轻量服务器（上海），pm2 进程管理
+- **自动部署**：push main 分支 → GitHub Actions → 构建前端 → SCP 上传 → pm2 restart
+- **手动部署**：`SSH_KEY=~/Downloads/fishlee.pem ./deploy.sh 14.103.81.26`
+- **服务器环境变量**：保存在 `/root/fishlee/ecosystem.config.js`（TOS 密钥等）
 
 ## 数据类型
 
 ```typescript
+Goal      { id, title, description, icon?, color?, createdAt, updatedAt,
+            taskProgress, checkIns[], notes[], bookmarks[], inspirations[],
+            plans[], learningPaths[], activePathId }
+UserData  { goals: Goal[], activeGoalId }
 Plan      { id, date(YYYY-MM-DD), content, completed, createdAt }
-CheckIn   { id, timestamp(ISO), content, duration, phaseId }
+CheckIn   { id, timestamp(ISO), content, duration, phaseId, planSnapshot? }
 Note      { id, title, content, phaseId?, tags[], createdAt, updatedAt }
 Bookmark  { id, title, url, category, note?, addedAt }
 Inspiration { id, content, color, tags[], createdAt }
 ```
 
-- ID 生成规则：`{前缀}-${Date.now()}`，前缀如 `pl-`、`ci-`、`n-`、`bm-`、`ins-`
+- ID 生成规则：`{前缀}-${Date.now()}`，前缀如 `goal-`、`pl-`、`ci-`、`n-`、`bm-`、`ins-`
 - CheckIn 旧数据可能只有 `date` 字段，`migrateCheckIns()` 自动转为 `timestamp`
+- 组件通过 `useGoalData(g => g.checkIns)` 选择器获取当前目标的数据，通过 `useStore()` 获取 action
+- `STORAGE_VERSION = 5`，v4→v5 迁移将扁平数据包装进 `goals[0]`
 
 ## 样式约定
 

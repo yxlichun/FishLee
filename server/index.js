@@ -101,7 +101,7 @@ const server = http.createServer(async (req, res) => {
     if (method === 'GET' && urlPath === '/api/data') {
       const raw = await tosGet(DATA_KEY);
       if (raw) { send(res, 200, raw); }
-      else { send(res, 200, { taskProgress: {}, checkIns: [], notes: [], bookmarks: [], inspirations: [], plans: [] }); }
+      else { send(res, 200, { goals: [], activeGoalId: null }); }
       return;
     }
 

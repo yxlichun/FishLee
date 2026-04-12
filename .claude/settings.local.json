@@ -22,7 +22,14 @@
       "WebFetch(domain:www.volcengine.com)",
       "Bash(git commit -m 'fix: TosClient 参数名 secretAccessKey → accessKeySecret:*)",
       "Bash(git commit -m 'docs: 添加部署手册 DEPLOY.md:*)",
-      "Bash(git commit -m 'fix: tosGet 返回值是 Buffer 而非流，直接转字符串:*)"
+      "Bash(git commit -m 'fix: tosGet 返回值是 Buffer 而非流，直接转字符串:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(npx vite:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/goals)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/goals/default-goal/dashboard)",
+      "Bash(pkill -f \"vite --port 5173\")"
     ]
   }
 }
