@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore } from '../store';
+import { useStore, useGoalData } from '../store';
 import { InspirationColor } from '../types';
 import { Plus, X, Trash2, Edit2, Check } from 'lucide-react';
 
@@ -24,7 +24,8 @@ const colorDots: Record<InspirationColor, string> = {
 };
 
 export default function Inspirations() {
-  const { inspirations, addInspiration, updateInspiration, deleteInspiration } = useStore();
+  const inspirations = useGoalData((g) => g.inspirations) ?? [];
+  const { addInspiration, updateInspiration, deleteInspiration } = useStore();
   const [isCreating, setIsCreating] = useState(false);
   const [content, setContent] = useState('');
   const [color, setColor] = useState<InspirationColor>('yellow');

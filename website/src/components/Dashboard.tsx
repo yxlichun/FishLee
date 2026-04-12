@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useStore } from '../store';
-import { learningPath } from '../data/learningPath';
+import { useGoalData, useActiveGoal } from '../store';
 import { CheckCircle2, Calendar, FileText, Flame } from 'lucide-react';
 import { format, addDays, parseISO } from 'date-fns';
 
@@ -30,24 +29,47 @@ interface DayData {
 }
 
 export default function Dashboard() {
-  const { taskProgress, checkIns, notes, plans } = useStore();
+  const taskProgress = useGoalData((g) => g.taskProgress) ?? {};
+  const checkIns = useGoalData((g) => g.checkIns) ?? [];
+  const notes = useGoalData((g) => g.notes) ?? [];
+  const plans = useGoalData((g) => g.plans) ?? [];
+  const learningPaths = useGoalData((g) => g.learningPaths) ?? [];
+  const activePathId = useGoalData((g) => g.activePathId) ?? null;
   const [tooltip, setTooltip] = useState<{ day: DayData; x: number; y: number } | null>(null);
+  const activeGoal = useActiveGoal();
+
+  // 颜色映射
+  const colorMap: Record<string, string> = {
+    blue: 'bg-blue-500',
+    green: 'bg-green-500',
+    purple: 'bg-purple-500',
+    orange: 'bg-orange-500',
+    pink: 'bg-pink-500',
+    red: 'bg-red-500',
+  };
+  
+  // 获取当前目标的颜色
+  const goalColor = activeGoal?.color ? (colorMap[activeGoal.color] || activeGoal.color) : 'bg-brand-500';
+
+  // 当前激活路径
+  const activePath = learningPaths.find((p) => p.id === activePathId) ?? learningPaths[0];
+  const activePhases = activePath?.phases ?? [];
 
   // 计算总体进度
-  const allTasks = learningPath.flatMap(phase =>
+  const allTasks = activePhases.flatMap(phase =>
     phase.sections.flatMap(section => section.tasks)
   );
   const completedTasks = allTasks.filter(task => taskProgress[task.id]).length;
   const totalTasks = allTasks.length;
-  const overallProgress = Math.round((completedTasks / totalTasks) * 100);
+  const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   // 计算每个阶段的进度
-  const phaseProgress = learningPath.map(phase => {
+  const phaseProgress = activePhases.map(phase => {
     const phaseTasks = phase.sections.flatMap(s => s.tasks);
     const completed = phaseTasks.filter(t => taskProgress[t.id]).length;
     return {
       name: `第${phase.month}月`,
-      完成率: Math.round((completed / phaseTasks.length) * 100),
+      完成率: phaseTasks.length > 0 ? Math.round((completed / phaseTasks.length) * 100) : 0,
     };
   });
 
@@ -171,12 +193,13 @@ export default function Dashboard() {
     }
   });
 
+  // 获取热力图颜色 - 使用目标颜色
   const getColorClass = (score: number) => {
     if (score === 0) return HEATMAP_COLORS[0].bg;
-    if (score <= 1) return HEATMAP_COLORS[1].bg;
-    if (score <= 3) return HEATMAP_COLORS[2].bg;
-    if (score <= 5) return HEATMAP_COLORS[3].bg;
-    return HEATMAP_COLORS[4].bg;
+    if (score <= 1) return goalColor + ' bg-opacity-30';
+    if (score <= 3) return goalColor + ' bg-opacity-50';
+    if (score <= 5) return goalColor + ' bg-opacity-70';
+    return goalColor;
   };
 
   return (
@@ -257,7 +280,7 @@ export default function Dashboard() {
         <div className="w-full overflow-x-auto">
           <div className="relative min-w-[600px] sm:min-w-0">
             {/* 月份标签 */}
-            <div className="flex mb-1 ml-6 sm:ml-8">
+            <div className="flex mb-1 ml-8">
               {weeks.map((_, colIdx) => {
                 const monthLabel = monthLabels.find(m => m.col === colIdx);
                 return (
@@ -272,12 +295,10 @@ export default function Dashboard() {
 
             <div className="flex gap-0.5">
               {/* 星期标签 */}
-              <div className="flex flex-col gap-0.5 mr-1 flex-shrink-0">
+              <div className="flex flex-col gap-0.5 mr-1 flex-shrink-0 w-7">
                 {WEEKDAY_LABELS.map((label, i) => (
-                  <div key={i} className="h-3 sm:h-4 w-5 sm:w-6 flex items-center justify-end">
-                    {(i === 1 || i === 3 || i === 5) && (
-                      <span className="text-xs text-gray-400">{label}</span>
-                    )}
+                  <div key={i} className="flex-1 flex items-center justify-end">
+                    <span className="text-xs text-gray-400 leading-none">{label}</span>
                   </div>
                 ))}
               </div>

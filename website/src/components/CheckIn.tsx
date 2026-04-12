@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { useStore } from '../store';
-import { learningPath } from '../data/learningPath';
+import { useStore, useGoalData } from '../store';
 import { format } from 'date-fns';
 import { Pencil, Trash2, Check, X, ClipboardList } from 'lucide-react';
 
 export default function CheckIn() {
-  const { checkIns, addCheckIn, updateCheckIn, deleteCheckIn, plans, togglePlan } = useStore();
+  const checkIns = useGoalData((g) => g.checkIns) ?? [];
+  const plans = useGoalData((g) => g.plans) ?? [];
+  const learningPaths = useGoalData((g) => g.learningPaths) ?? [];
+  const activePathId = useGoalData((g) => g.activePathId) ?? null;
+  const { addCheckIn, updateCheckIn, deleteCheckIn, togglePlan } = useStore();
   const [content, setContent]     = useState('');
   const [duration, setDuration]   = useState(60);
   const [phaseId, setPhaseId]     = useState(1);
@@ -13,6 +16,9 @@ export default function CheckIn() {
   const [editContent, setEditContent]   = useState('');
   const [editDuration, setEditDuration] = useState(60);
   const [editPhaseId, setEditPhaseId]   = useState(1);
+
+  const activePath = learningPaths.find((p) => p.id === activePathId) ?? learningPaths[0];
+  const activePhases = activePath?.phases ?? [];
 
   const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -129,7 +135,7 @@ export default function CheckIn() {
                 onChange={(e) => setPhaseId(Number(e.target.value))}
                 className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               >
-                {learningPath.map((phase) => (
+                {activePhases.map((phase) => (
                   <option key={phase.id} value={phase.id}>
                     第{phase.month}月 - {phase.title}
                   </option>
@@ -177,7 +183,7 @@ export default function CheckIn() {
                           onChange={(e) => setEditPhaseId(Number(e.target.value))}
                           className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                         >
-                          {learningPath.map((phase) => (
+                          {activePhases.map((phase) => (
                             <option key={phase.id} value={phase.id}>
                               第{phase.month}月 - {phase.title}
                             </option>

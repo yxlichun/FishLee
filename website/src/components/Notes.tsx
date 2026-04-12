@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, lazy, Suspense } from 'react';
-import { useStore } from '../store';
-import { learningPath } from '../data/learningPath';
+import { useStore, useGoalData } from '../store';
 import { Plus, Edit2, Trash2, Save, X, Image, Eye, Code, Maximize2 } from 'lucide-react';
 
 const MarkdownRenderer = lazy(() => import('./MarkdownRenderer'));
@@ -38,7 +37,12 @@ async function uploadImage(file: File): Promise<string> {
 }
 
 export default function Notes() {
-  const { notes, addNote, updateNote, deleteNote } = useStore();
+  const notes = useGoalData((g) => g.notes) ?? [];
+  const learningPaths = useGoalData((g) => g.learningPaths) ?? [];
+  const activePathId = useGoalData((g) => g.activePathId) ?? null;
+  const { addNote, updateNote, deleteNote } = useStore();
+  const activePath = learningPaths.find((p) => p.id === activePathId) ?? learningPaths[0];
+  const activePhases = activePath?.phases ?? [];
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -224,7 +228,7 @@ export default function Notes() {
               onChange={(e) => setFormData({ ...formData, phaseId: Number(e.target.value) })}
               className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             >
-              {learningPath.map((phase) => (
+              {activePhases.map((phase) => (
                 <option key={phase.id} value={phase.id}>
                   第{phase.month}月 - {phase.title}
                 </option>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore } from '../store';
+import { useStore, useGoalData } from '../store';
 import { format, addDays } from 'date-fns';
 import { Plus, Trash2, Check, ChevronDown, ChevronUp, CalendarDays, Pencil, X, CalendarClock } from 'lucide-react';
 import { Plan } from '../types';
@@ -23,7 +23,8 @@ function groupByDate(plans: Plan[]): Record<string, Plan[]> {
 }
 
 export default function Plans() {
-  const { plans, addPlan, updatePlan, deletePlan, togglePlan } = useStore();
+  const plans = useGoalData((g) => g.plans) ?? [];
+  const { addPlan, updatePlan, deletePlan, togglePlan } = useStore();
 
   const [newContent, setNewContent]   = useState('');
   const [newDate, setNewDate]         = useState(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
@@ -78,8 +79,8 @@ export default function Plans() {
 
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">学习计划</h1>
-          <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">为任意日期制定计划，打卡时关联确认</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Todo List</h1>
+          <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">为任意日期添加任务，打卡时关联确认</p>
         </div>
         {!adding && (
           <button
@@ -87,7 +88,7 @@ export default function Plans() {
             className="btn-primary flex items-center justify-center gap-2 py-2.5 sm:py-2"
           >
             <Plus size={20} />
-            新增计划
+            新增任务
           </button>
         )}
       </div>
@@ -95,7 +96,7 @@ export default function Plans() {
       {total > 0 && (
         <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
           <div className="card p-3 sm:p-4">
-            <p className="text-xs sm:text-sm text-gray-500">全部计划</p>
+            <p className="text-xs sm:text-sm text-gray-500">全部任务</p>
             <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{total}</p>
           </div>
           <div className="card p-3 sm:p-4">
@@ -103,7 +104,7 @@ export default function Plans() {
             <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-1">{completed}</p>
           </div>
           <div className="card p-3 sm:p-4">
-            <p className="text-xs sm:text-sm text-gray-500">今日计划</p>
+            <p className="text-xs sm:text-sm text-gray-500">今日任务</p>
             <p className="text-2xl sm:text-3xl font-bold text-brand-600 mt-1">{todayCount}</p>
           </div>
         </div>
@@ -114,7 +115,7 @@ export default function Plans() {
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
               <CalendarDays size={20} className="text-brand-600" />
-              新增学习计划
+              新增任务
             </h2>
             <button
               onClick={() => { setAdding(false); setNewContent(''); }}
@@ -167,7 +168,7 @@ export default function Plans() {
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={handleAdd} className="btn-primary flex-1 py-2.5 sm:py-3">
-              保存计划
+              保存任务
             </button>
             <button
               onClick={() => { setAdding(false); setNewContent(''); }}
@@ -182,8 +183,8 @@ export default function Plans() {
       {dates.length === 0 ? (
         <div className="card text-center py-12 sm:py-16 text-gray-400">
           <CalendarDays size={40} className="mx-auto mb-4 opacity-30" />
-          <p className="text-base sm:text-lg font-medium">还没有计划</p>
-          <p className="text-sm mt-1">点击「新增计划」开始安排学习</p>
+          <p className="text-base sm:text-lg font-medium">还没有任务</p>
+          <p className="text-sm mt-1">点击「新增任务」开始安排学习</p>
         </div>
       ) : (
         <div className="space-y-3 sm:space-y-4">

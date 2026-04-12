@@ -1,13 +1,48 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { UserData, CheckIn, Note, Bookmark, Inspiration, Plan } from './types';
+import { UserData, Goal, CheckIn, Note, Bookmark, Inspiration, Plan, LearningPath, Phase } from './types';
+import { learningPath as builtinPhases } from './data/learningPath';
 
 const API_URL = import.meta.env.VITE_API_BASE
   ? `${import.meta.env.VITE_API_BASE}/api/data`
   : '/api/data';
 const STORAGE_KEY = 'ai-pm-learning-storage';
-const STORAGE_VERSION = 3;
+const STORAGE_VERSION = 5;
 const isDevelopment = import.meta.env.DEV;
+
+const BUILTIN_PATH_ID = 'builtin-ai-pm-6months';
+const DEFAULT_GOAL_ID = 'default-goal';
+
+function makeBuiltinPath(): LearningPath {
+  const now = new Date().toISOString();
+  return {
+    id: BUILTIN_PATH_ID,
+    title: 'AI产品经理6个月转型',
+    description: '从零开始，6个月系统学习AI产品经理所需的全部技能',
+    createdAt: now,
+    updatedAt: now,
+    phases: builtinPhases,
+  };
+}
+
+function makeDefaultGoal(): Goal {
+  const now = new Date().toISOString();
+  return {
+    id: DEFAULT_GOAL_ID,
+    title: 'AI PM 学习路径',
+    description: '6个月转型计划',
+    createdAt: now,
+    updatedAt: now,
+    taskProgress: {},
+    checkIns: [],
+    notes: [],
+    bookmarks: [],
+    inspirations: [],
+    plans: [],
+    learningPaths: [makeBuiltinPath()],
+    activePathId: BUILTIN_PATH_ID,
+  };
+}
 
 // ---------- helpers ----------
 
@@ -36,16 +71,84 @@ function migrateCheckIns(checkIns: any[]): CheckIn[] {
   });
 }
 
-// 从任意来源的 JSON 里安全地解出完整 UserData
-function parseUserData(raw: any): Omit<UserData, never> & { _lastUpdated?: string } {
+// 解析单个 Goal 对象，补齐缺失字段
+function parseGoal(raw: any): Goal {
+  const learningPaths: LearningPath[] = raw.learningPaths || [];
+  if (learningPaths.length === 0) {
+    learningPaths.push(makeBuiltinPath());
+  }
   return {
-    taskProgress:  raw.taskProgress  || {},
-    checkIns:      migrateCheckIns(raw.checkIns || []),
-    notes:         raw.notes         || [],
-    bookmarks:     raw.bookmarks     || [],
-    inspirations:  raw.inspirations  || [],
-    plans:         raw.plans         || [],
-    _lastUpdated:  raw._lastUpdated,
+    id: raw.id || `goal-${Date.now()}`,
+    title: raw.title || '未命名目标',
+    description: raw.description || '',
+    icon: raw.icon,
+    color: raw.color,
+    createdAt: raw.createdAt || new Date().toISOString(),
+    updatedAt: raw.updatedAt || new Date().toISOString(),
+    taskProgress: raw.taskProgress || {},
+    checkIns: migrateCheckIns(raw.checkIns || []),
+    notes: raw.notes || [],
+    bookmarks: raw.bookmarks || [],
+    inspirations: raw.inspirations || [],
+    plans: raw.plans || [],
+    learningPaths,
+    activePathId: raw.activePathId ?? learningPaths[0]?.id ?? null,
+  };
+}
+
+// 将旧版扁平数据迁移为单个默认 Goal
+function migrateToGoal(raw: any): Goal {
+  const learningPaths: LearningPath[] = raw.learningPaths || [];
+  if (learningPaths.length === 0) {
+    learningPaths.push(makeBuiltinPath());
+  }
+  return {
+    id: DEFAULT_GOAL_ID,
+    title: 'AI PM 学习路径',
+    description: '6个月转型计划',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    taskProgress: raw.taskProgress || {},
+    checkIns: migrateCheckIns(raw.checkIns || []),
+    notes: raw.notes || [],
+    bookmarks: raw.bookmarks || [],
+    inspirations: raw.inspirations || [],
+    plans: raw.plans || [],
+    learningPaths,
+    activePathId: raw.activePathId ?? learningPaths[0]?.id ?? null,
+  };
+}
+
+// 从任意来源的 JSON 里安全地解出完整 UserData
+function parseUserData(raw: any): UserData & { _lastUpdated?: string } {
+  // 新格式：有 goals 数组
+  if (raw.goals && Array.isArray(raw.goals)) {
+    return {
+      goals: raw.goals.map(parseGoal),
+      activeGoalId: raw.activeGoalId ?? raw.goals[0]?.id ?? null,
+      _lastUpdated: raw._lastUpdated,
+    };
+  }
+  // 旧格式：扁平字段 → 迁移为单个默认 Goal
+  const defaultGoal = migrateToGoal(raw);
+  return {
+    goals: [defaultGoal],
+    activeGoalId: defaultGoal.id,
+    _lastUpdated: raw._lastUpdated,
+  };
+}
+
+// ---------- active goal helper ----------
+
+// 更新 active goal 的通用辅助函数
+function updateActiveGoal(
+  state: { goals: Goal[]; activeGoalId: string | null },
+  updater: (goal: Goal) => Goal,
+): { goals: Goal[] } {
+  return {
+    goals: state.goals.map((g) =>
+      g.id === state.activeGoalId ? updater(g) : g
+    ),
   };
 }
 
@@ -59,6 +162,13 @@ interface AppStore extends UserData {
   loadData: () => Promise<void>;
   saveData: () => Promise<void>;
 
+  // goal management
+  addGoal:    (g: Pick<Goal, 'title' | 'description'> & Partial<Pick<Goal, 'icon' | 'color'>>) => Promise<string>;
+  updateGoal: (id: string, updates: Partial<Pick<Goal, 'title' | 'description' | 'icon' | 'color'>>) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
+  setActiveGoal: (id: string) => void;
+
+  // scoped to active goal
   toggleTask:       (taskId: string) => Promise<void>;
 
   addCheckIn:    (c: Omit<CheckIn, 'id' | 'timestamp'>) => Promise<void>;
@@ -81,6 +191,30 @@ interface AppStore extends UserData {
   deletePlan: (id: string) => Promise<void>;
   togglePlan: (id: string) => Promise<void>;
 
+  // learning paths (scoped to active goal)
+  setActivePath:    (id: string) => void;
+  addLearningPath:  (p: Omit<LearningPath, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
+  updateLearningPath: (id: string, updates: Partial<Pick<LearningPath, 'title' | 'description' | 'phases'>>) => Promise<void>;
+  deleteLearningPath: (id: string) => Promise<void>;
+  addPhase:    (pathId: string, phase: Omit<Phase, 'id'>) => Promise<void>;
+  updatePhase: (pathId: string, phaseId: number, updates: Partial<Omit<Phase, 'id'>>) => Promise<void>;
+  deletePhase: (pathId: string, phaseId: number) => Promise<void>;
+  
+  // sections
+  addSection:    (pathId: string, phaseId: number, section: Omit<Section, 'id'>) => Promise<void>;
+  updateSection: (pathId: string, phaseId: number, sectionId: string, updates: Partial<Omit<Section, 'id'>>) => Promise<void>;
+  deleteSection: (pathId: string, phaseId: number, sectionId: string) => Promise<void>;
+  
+  // tasks
+  addTask:    (pathId: string, phaseId: number, sectionId: string, task: Omit<Task, 'id'>) => Promise<void>;
+  updateTask: (pathId: string, phaseId: number, sectionId: string, taskId: string, updates: Partial<Omit<Task, 'id'>>) => Promise<void>;
+  deleteTask: (pathId: string, phaseId: number, sectionId: string, taskId: string) => Promise<void>;
+  
+  // resources
+  addResource:    (pathId: string, phaseId: number, sectionId: string, resource: Omit<Resource, 'id'>) => Promise<void>;
+  updateResource: (pathId: string, phaseId: number, sectionId: string, resourceId: number, updates: Partial<Omit<Resource, 'id'>>) => Promise<void>;
+  deleteResource: (pathId: string, phaseId: number, sectionId: string, resourceId: number) => Promise<void>;
+
   exportData: () => string;
   importData: (jsonString: string) => Promise<void>;
 }
@@ -91,12 +225,8 @@ export const useStore = create<AppStore>()(
   persist(
     (set, get) => ({
       // --- state ---
-      taskProgress: {},
-      checkIns:     [],
-      notes:        [],
-      bookmarks:    [],
-      inspirations: [],
-      plans:        [],
+      goals: [makeDefaultGoal()],
+      activeGoalId: DEFAULT_GOAL_ID,
       _lastUpdated: '',
       isLoading:    false,
       error:        null,
@@ -118,20 +248,17 @@ export const useStore = create<AppStore>()(
           const localUpdated = get()._lastUpdated;
           const blobUpdated  = blobData._lastUpdated ?? '';
 
-          // Blob 更新时间更晚 → 用 Blob（跨设备同步）
-          // 否则 → 保留本地，同步回 Blob
           if (!localUpdated || (blobUpdated && blobUpdated > localUpdated)) {
             set({ ...blobData, isLoading: false });
-            // 如果有迁移（checkIns 格式变化），立即回写
-            if (blobRaw.checkIns?.some((c: any) => !c.id || !isValidDate(c.timestamp))) {
+            // 如果旧格式需要迁移，回写
+            if (!blobRaw.goals) {
               await get().saveData();
             }
           } else {
             set({ isLoading: false });
-            await get().saveData(); // 本地更新 → 写回 Blob
+            await get().saveData();
           }
         } catch {
-          // API 失败：静默降级，保留 localStorage 数据
           set({ isLoading: false });
         }
       },
@@ -139,18 +266,17 @@ export const useStore = create<AppStore>()(
       // --- saveData ---
       saveData: async () => {
         const now = new Date().toISOString();
-        // 先把时间戳写进 localStorage（persist 会自动持久化）
         set({ _lastUpdated: now });
 
-        if (isDevelopment) return; // 开发环境只存 localStorage
+        if (isDevelopment) return;
 
-        const { taskProgress, checkIns, notes, bookmarks, inspirations, plans } = get();
+        const { goals, activeGoalId } = get();
         try {
           const res = await fetch(API_URL, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              taskProgress, checkIns, notes, bookmarks, inspirations, plans,
+              goals, activeGoalId,
               _lastUpdated: now,
             }),
           });
@@ -160,102 +286,497 @@ export const useStore = create<AppStore>()(
         }
       },
 
-      // --- tasks ---
-      toggleTask: async (taskId) => {
-        set((s) => ({ taskProgress: { ...s.taskProgress, [taskId]: !s.taskProgress[taskId] } }));
+      // --- goal management ---
+      addGoal: async (goalInput) => {
+        const now = new Date().toISOString();
+        const newGoal: Goal = {
+          id: `goal-${Date.now()}`,
+          title: goalInput.title,
+          description: goalInput.description,
+          icon: goalInput.icon,
+          color: goalInput.color,
+          createdAt: now,
+          updatedAt: now,
+          taskProgress: {},
+          checkIns: [],
+          notes: [],
+          bookmarks: [],
+          inspirations: [],
+          plans: [],
+          learningPaths: [],
+          activePathId: null,
+        };
+        set((s) => ({ goals: [...s.goals, newGoal], activeGoalId: newGoal.id }));
+        await get().saveData();
+        return newGoal.id;
+      },
+
+      updateGoal: async (id, updates) => {
+        set((s) => ({
+          goals: s.goals.map((g) =>
+            g.id === id ? { ...g, ...updates, updatedAt: new Date().toISOString() } : g
+          ),
+        }));
         await get().saveData();
       },
 
-      // --- checkIns ---
+      deleteGoal: async (id) => {
+        set((s) => {
+          const remaining = s.goals.filter((g) => g.id !== id);
+          const newActiveId = s.activeGoalId === id ? (remaining[0]?.id ?? null) : s.activeGoalId;
+          return { goals: remaining, activeGoalId: newActiveId };
+        });
+        await get().saveData();
+      },
+
+      setActiveGoal: (id) => {
+        set({ activeGoalId: id });
+      },
+
+      // --- tasks (scoped to active goal) ---
+      toggleTask: async (taskId) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          taskProgress: { ...g.taskProgress, [taskId]: !g.taskProgress[taskId] },
+        })));
+        await get().saveData();
+      },
+
+      // --- checkIns (scoped to active goal) ---
       addCheckIn: async (checkIn) => {
-        set((s) => ({
-          checkIns: [{ ...checkIn, id: `ci-${Date.now()}`, timestamp: new Date().toISOString() }, ...s.checkIns],
-        }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          checkIns: [{ ...checkIn, id: `ci-${Date.now()}`, timestamp: new Date().toISOString() }, ...g.checkIns],
+        })));
         await get().saveData();
       },
       updateCheckIn: async (id, updates) => {
-        set((s) => ({ checkIns: s.checkIns.map((c) => c.id === id ? { ...c, ...updates } : c) }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          checkIns: g.checkIns.map((c) => c.id === id ? { ...c, ...updates } : c),
+        })));
         await get().saveData();
       },
       deleteCheckIn: async (id) => {
-        set((s) => ({ checkIns: s.checkIns.filter((c) => c.id !== id) }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          checkIns: g.checkIns.filter((c) => c.id !== id),
+        })));
         await get().saveData();
       },
 
-      // --- notes ---
+      // --- notes (scoped to active goal) ---
       addNote: async (note) => {
         const now = new Date().toISOString();
-        set((s) => ({
-          notes: [...s.notes, { ...note, id: `n-${Date.now()}`, createdAt: now, updatedAt: now }],
-        }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          notes: [...g.notes, { ...note, id: `n-${Date.now()}`, createdAt: now, updatedAt: now }],
+        })));
         await get().saveData();
       },
       updateNote: async (id, updates) => {
-        set((s) => ({
-          notes: s.notes.map((n) => n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n),
-        }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          notes: g.notes.map((n) => n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n),
+        })));
         await get().saveData();
       },
       deleteNote: async (id) => {
-        set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          notes: g.notes.filter((n) => n.id !== id),
+        })));
         await get().saveData();
       },
 
-      // --- bookmarks ---
+      // --- bookmarks (scoped to active goal) ---
       addBookmark: async (bookmark) => {
-        set((s) => ({
-          bookmarks: [...s.bookmarks, { ...bookmark, id: `bm-${Date.now()}`, addedAt: new Date().toISOString() }],
-        }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          bookmarks: [...g.bookmarks, { ...bookmark, id: `bm-${Date.now()}`, addedAt: new Date().toISOString() }],
+        })));
         await get().saveData();
       },
       deleteBookmark: async (id) => {
-        set((s) => ({ bookmarks: s.bookmarks.filter((b) => b.id !== id) }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          bookmarks: g.bookmarks.filter((b) => b.id !== id),
+        })));
         await get().saveData();
       },
 
-      // --- inspirations ---
+      // --- inspirations (scoped to active goal) ---
       addInspiration: async (inspiration) => {
-        set((s) => ({
-          inspirations: [{ ...inspiration, id: `ins-${Date.now()}`, createdAt: new Date().toISOString() }, ...s.inspirations],
-        }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          inspirations: [{ ...inspiration, id: `ins-${Date.now()}`, createdAt: new Date().toISOString() }, ...g.inspirations],
+        })));
         await get().saveData();
       },
       updateInspiration: async (id, updates) => {
-        set((s) => ({ inspirations: s.inspirations.map((i) => i.id === id ? { ...i, ...updates } : i) }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          inspirations: g.inspirations.map((i) => i.id === id ? { ...i, ...updates } : i),
+        })));
         await get().saveData();
       },
       deleteInspiration: async (id) => {
-        set((s) => ({ inspirations: s.inspirations.filter((i) => i.id !== id) }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          inspirations: g.inspirations.filter((i) => i.id !== id),
+        })));
         await get().saveData();
       },
 
-      // --- plans ---
+      // --- plans (scoped to active goal) ---
       addPlan: async (plan) => {
-        set((s) => ({
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
           plans: [
-            ...s.plans,
+            ...g.plans,
             { ...plan, id: `pl-${Date.now()}`, completed: false, createdAt: new Date().toISOString() },
           ],
-        }));
+        })));
         await get().saveData();
       },
       updatePlan: async (id, updates) => {
-        set((s) => ({ plans: s.plans.map((p) => p.id === id ? { ...p, ...updates } : p) }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          plans: g.plans.map((p) => p.id === id ? { ...p, ...updates } : p),
+        })));
         await get().saveData();
       },
       deletePlan: async (id) => {
-        set((s) => ({ plans: s.plans.filter((p) => p.id !== id) }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          plans: g.plans.filter((p) => p.id !== id),
+        })));
         await get().saveData();
       },
       togglePlan: async (id) => {
-        set((s) => ({ plans: s.plans.map((p) => p.id === id ? { ...p, completed: !p.completed } : p) }));
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          plans: g.plans.map((p) => p.id === id ? { ...p, completed: !p.completed } : p),
+        })));
+        await get().saveData();
+      },
+
+      // --- learning paths (scoped to active goal) ---
+      setActivePath: (id) => {
+        set((s) => updateActiveGoal(s, (g) => ({ ...g, activePathId: id })));
+      },
+
+      addLearningPath: async (path) => {
+        const now = new Date().toISOString();
+        const newPath: LearningPath = {
+          ...path,
+          id: `lp-${Date.now()}`,
+          createdAt: now,
+          updatedAt: now,
+        };
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: [...g.learningPaths, newPath],
+          activePathId: newPath.id,
+        })));
+        await get().saveData();
+        return newPath.id;
+      },
+
+      updateLearningPath: async (id, updates) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) =>
+            p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
+          ),
+        })));
+        await get().saveData();
+      },
+
+      deleteLearningPath: async (id) => {
+        set((s) => updateActiveGoal(s, (g) => {
+          const remaining = g.learningPaths.filter((p) => p.id !== id);
+          const newActiveId = g.activePathId === id ? (remaining[0]?.id ?? null) : g.activePathId;
+          return { ...g, learningPaths: remaining, activePathId: newActiveId };
+        }));
+        await get().saveData();
+      },
+
+      addPhase: async (pathId, phase) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) => {
+            if (p.id !== pathId) return p;
+            const maxId = p.phases.reduce((m, ph) => Math.max(m, ph.id), 0);
+            const newPhase = { ...phase, id: maxId + 1 };
+            return { ...p, phases: [...p.phases, newPhase], updatedAt: new Date().toISOString() };
+          }),
+        })));
+        await get().saveData();
+      },
+
+      updatePhase: async (pathId, phaseId, updates) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) => {
+            if (p.id !== pathId) return p;
+            return {
+              ...p,
+              phases: p.phases.map((ph) => ph.id === phaseId ? { ...ph, ...updates } : ph),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        })));
+        await get().saveData();
+      },
+
+      deletePhase: async (pathId, phaseId) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) => {
+            if (p.id !== pathId) return p;
+            return {
+              ...p,
+              phases: p.phases.filter((ph) => ph.id !== phaseId),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        })));
+        await get().saveData();
+      },
+
+      // --- sections ---      
+      addSection: async (pathId, phaseId, section) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) => {
+            if (p.id !== pathId) return p;
+            return {
+              ...p,
+              phases: p.phases.map((ph) => {
+                if (ph.id !== phaseId) return ph;
+                return {
+                  ...ph,
+                  sections: [...ph.sections, { ...section, id: `sec-${Date.now()}` }],
+                };
+              }),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        })));
+        await get().saveData();
+      },
+
+      updateSection: async (pathId, phaseId, sectionId, updates) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) => {
+            if (p.id !== pathId) return p;
+            return {
+              ...p,
+              phases: p.phases.map((ph) => {
+                if (ph.id !== phaseId) return ph;
+                return {
+                  ...ph,
+                  sections: ph.sections.map((sec) => sec.id === sectionId ? { ...sec, ...updates } : sec),
+                };
+              }),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        })));
+        await get().saveData();
+      },
+
+      deleteSection: async (pathId, phaseId, sectionId) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) => {
+            if (p.id !== pathId) return p;
+            return {
+              ...p,
+              phases: p.phases.map((ph) => {
+                if (ph.id !== phaseId) return ph;
+                return {
+                  ...ph,
+                  sections: ph.sections.filter((sec) => sec.id !== sectionId),
+                };
+              }),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        })));
+        await get().saveData();
+      },
+
+      // --- tasks ---      
+      addTask: async (pathId, phaseId, sectionId, task) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) => {
+            if (p.id !== pathId) return p;
+            return {
+              ...p,
+              phases: p.phases.map((ph) => {
+                if (ph.id !== phaseId) return ph;
+                return {
+                  ...ph,
+                  sections: ph.sections.map((sec) => {
+                    if (sec.id !== sectionId) return sec;
+                    return {
+                      ...sec,
+                      tasks: [...sec.tasks, { ...task, id: `task-${Date.now()}` }],
+                    };
+                  }),
+                };
+              }),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        })));
+        await get().saveData();
+      },
+
+      updateTask: async (pathId, phaseId, sectionId, taskId, updates) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) => {
+            if (p.id !== pathId) return p;
+            return {
+              ...p,
+              phases: p.phases.map((ph) => {
+                if (ph.id !== phaseId) return ph;
+                return {
+                  ...ph,
+                  sections: ph.sections.map((sec) => {
+                    if (sec.id !== sectionId) return sec;
+                    return {
+                      ...sec,
+                      tasks: sec.tasks.map((t) => t.id === taskId ? { ...t, ...updates } : t),
+                    };
+                  }),
+                };
+              }),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        })));
+        await get().saveData();
+      },
+
+      deleteTask: async (pathId, phaseId, sectionId, taskId) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) => {
+            if (p.id !== pathId) return p;
+            return {
+              ...p,
+              phases: p.phases.map((ph) => {
+                if (ph.id !== phaseId) return ph;
+                return {
+                  ...ph,
+                  sections: ph.sections.map((sec) => {
+                    if (sec.id !== sectionId) return sec;
+                    return {
+                      ...sec,
+                      tasks: sec.tasks.filter((t) => t.id !== taskId),
+                    };
+                  }),
+                };
+              }),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        })));
+        await get().saveData();
+      },
+
+      // --- resources ---      
+      addResource: async (pathId, phaseId, sectionId, resource) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) => {
+            if (p.id !== pathId) return p;
+            return {
+              ...p,
+              phases: p.phases.map((ph) => {
+                if (ph.id !== phaseId) return ph;
+                return {
+                  ...ph,
+                  sections: ph.sections.map((sec) => {
+                    if (sec.id !== sectionId) return sec;
+                    return {
+                      ...sec,
+                      resources: [...sec.resources, resource],
+                    };
+                  }),
+                };
+              }),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        })));
+        await get().saveData();
+      },
+
+      updateResource: async (pathId, phaseId, sectionId, resourceId, updates) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) => {
+            if (p.id !== pathId) return p;
+            return {
+              ...p,
+              phases: p.phases.map((ph) => {
+                if (ph.id !== phaseId) return ph;
+                return {
+                  ...ph,
+                  sections: ph.sections.map((sec) => {
+                    if (sec.id !== sectionId) return sec;
+                    return {
+                      ...sec,
+                      resources: sec.resources.map((r, idx) => idx === resourceId ? { ...r, ...updates } : r),
+                    };
+                  }),
+                };
+              }),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        })));
+        await get().saveData();
+      },
+
+      deleteResource: async (pathId, phaseId, sectionId, resourceId) => {
+        set((s) => updateActiveGoal(s, (g) => ({
+          ...g,
+          learningPaths: g.learningPaths.map((p) => {
+            if (p.id !== pathId) return p;
+            return {
+              ...p,
+              phases: p.phases.map((ph) => {
+                if (ph.id !== phaseId) return ph;
+                return {
+                  ...ph,
+                  sections: ph.sections.map((sec) => {
+                    if (sec.id !== sectionId) return sec;
+                    return {
+                      ...sec,
+                      resources: sec.resources.filter((_, idx) => idx !== resourceId),
+                    };
+                  }),
+                };
+              }),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        })));
         await get().saveData();
       },
 
       // --- export / import ---
       exportData: () => {
-        const { taskProgress, checkIns, notes, bookmarks, inspirations, plans } = get();
-        return JSON.stringify({ taskProgress, checkIns, notes, bookmarks, inspirations, plans }, null, 2);
+        const { goals, activeGoalId } = get();
+        return JSON.stringify({ goals, activeGoalId }, null, 2);
       },
       importData: async (jsonString) => {
         try {
@@ -271,14 +792,9 @@ export const useStore = create<AppStore>()(
     {
       name: STORAGE_KEY,
       version: STORAGE_VERSION,
-      // 持久化字段：包含 plans 和 _lastUpdated
       partialize: (state) => ({
-        taskProgress: state.taskProgress,
-        checkIns:     state.checkIns,
-        notes:        state.notes,
-        bookmarks:    state.bookmarks,
-        inspirations: state.inspirations,
-        plans:        state.plans,
+        goals:        state.goals,
+        activeGoalId: state.activeGoalId,
         _lastUpdated: state._lastUpdated,
       }),
       migrate: (persisted: any, version: number) => {
@@ -290,9 +806,61 @@ export const useStore = create<AppStore>()(
         if (version < 2) {
           persisted.plans = persisted.plans || [];
         }
-        // v2→v3: checkIn 新增 planSnapshot 可选字段，旧数据无需补充（undefined 即可）
+        // v2→v3: checkIn 新增 planSnapshot 可选字段，旧数据无需补充
+        // v3→v4: 新增 learningPaths / activePathId
+        if (version < 4) {
+          if (!persisted.learningPaths || persisted.learningPaths.length === 0) {
+            const builtin = makeBuiltinPath();
+            persisted.learningPaths = [builtin];
+            persisted.activePathId = builtin.id;
+          }
+        }
+        // v4→v5: 引入 Goal 实体，将扁平数据包装进 goals 数组
+        if (version < 5) {
+          if (!persisted.goals) {
+            const goal: Goal = {
+              id: DEFAULT_GOAL_ID,
+              title: 'AI PM 学习路径',
+              description: '6个月转型计划',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              taskProgress: persisted.taskProgress || {},
+              checkIns: migrateCheckIns(persisted.checkIns || []),
+              notes: persisted.notes || [],
+              bookmarks: persisted.bookmarks || [],
+              inspirations: persisted.inspirations || [],
+              plans: persisted.plans || [],
+              learningPaths: persisted.learningPaths || [makeBuiltinPath()],
+              activePathId: persisted.activePathId ?? BUILTIN_PATH_ID,
+            };
+            persisted.goals = [goal];
+            persisted.activeGoalId = goal.id;
+            // 清理旧字段
+            delete persisted.taskProgress;
+            delete persisted.checkIns;
+            delete persisted.notes;
+            delete persisted.bookmarks;
+            delete persisted.inspirations;
+            delete persisted.plans;
+            delete persisted.learningPaths;
+            delete persisted.activePathId;
+          }
+        }
         return persisted;
       },
     }
   )
 );
+
+// ---------- selector hooks ----------
+
+export function useActiveGoal(): Goal | undefined {
+  return useStore((s) => s.goals.find((g) => g.id === s.activeGoalId));
+}
+
+export function useGoalData<T>(selector: (goal: Goal) => T): T | undefined {
+  return useStore((s) => {
+    const goal = s.goals.find((g) => g.id === s.activeGoalId);
+    return goal ? selector(goal) : undefined;
+  });
+}

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useStore } from '../store';
+import { useStore, useGoalData } from '../store';
 import { Plus, ExternalLink, Trash2, X } from 'lucide-react';
 
 export default function Resources() {
-  const { bookmarks, addBookmark, deleteBookmark } = useStore();
+  const bookmarks = useGoalData((g) => g.bookmarks) ?? [];
+  const { addBookmark, deleteBookmark } = useStore();
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState({
     title: '',

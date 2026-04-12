@@ -1,12 +1,21 @@
-import { useState } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Calendar, FileText, Bookmark, Download, Upload, Lightbulb, ClipboardList, Menu, X } from 'lucide-react';
-import { useStore } from '../store';
+import { useState, useEffect } from 'react';
+import { Outlet, NavLink, useParams, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, BookOpen, Calendar, FileText, Bookmark, Download, Upload, Lightbulb, ClipboardList, Menu, X, ArrowLeft } from 'lucide-react';
+import { useStore, useActiveGoal } from '../store';
 
 export default function Layout() {
-  const exportData = useStore((state) => state.exportData);
-  const importData = useStore((state) => state.importData);
+  const { goalId } = useParams();
+  const navigate = useNavigate();
+  const setActiveGoal = useStore((s) => s.setActiveGoal);
+  const exportData = useStore((s) => s.exportData);
+  const importData = useStore((s) => s.importData);
+  const activeGoal = useActiveGoal();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // 同步 URL goalId 到 store
+  useEffect(() => {
+    if (goalId) setActiveGoal(goalId);
+  }, [goalId, setActiveGoal]);
 
   const handleExport = () => {
     const data = exportData();
@@ -38,22 +47,32 @@ export default function Layout() {
   };
 
   const navItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: '仪表盘' },
-    { to: '/learning-path', icon: BookOpen, label: '学习路径' },
-    { to: '/plans', icon: ClipboardList, label: '学习计划' },
-    { to: '/check-in', icon: Calendar, label: '每日打卡' },
-    { to: '/notes', icon: FileText, label: '学习笔记' },
-    { to: '/resources', icon: Bookmark, label: '资源收藏' },
-    { to: '/inspirations', icon: Lightbulb, label: '灵感' },
+    { to: `/goals/${goalId}/dashboard`, icon: LayoutDashboard, label: '仪表盘' },
+    { to: `/goals/${goalId}/learning-path`, icon: BookOpen, label: '达成路径' },
+    { to: `/goals/${goalId}/plans`, icon: ClipboardList, label: 'Todo List' },
+    { to: `/goals/${goalId}/check-in`, icon: Calendar, label: '每日打卡' },
+    { to: `/goals/${goalId}/notes`, icon: FileText, label: '学习笔记' },
+    { to: `/goals/${goalId}/resources`, icon: Bookmark, label: '资源收藏' },
+    { to: `/goals/${goalId}/inspirations`, icon: Lightbulb, label: '灵感' },
   ];
+
+  const goalTitle = activeGoal?.title || '加载中...';
+  const goalDescription = activeGoal?.description || '';
 
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col">
         <div className="p-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">AI PM 学习路径</h1>
-          <p className="text-sm text-gray-500 mt-1">6个月转型计划</p>
+          <button
+            onClick={() => navigate('/goals')}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-600 transition-colors mb-3"
+          >
+            <ArrowLeft size={14} />
+            <span>返回目标列表</span>
+          </button>
+          <h1 className="text-xl font-bold text-gray-900">{goalTitle}</h1>
+          {goalDescription && <p className="text-sm text-gray-500 mt-1">{goalDescription}</p>}
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
@@ -84,9 +103,17 @@ export default function Layout() {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between p-4">
-          <div>
-            <h1 className="text-lg font-bold text-gray-900">AI PM 学习路径</h1>
-            <p className="text-xs text-gray-500">6个月转型计划</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/goals')}
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <ArrowLeft size={20} className="text-gray-600" />
+            </button>
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">{goalTitle}</h1>
+              {goalDescription && <p className="text-xs text-gray-500">{goalDescription}</p>}
+            </div>
           </div>
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

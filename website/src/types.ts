@@ -79,11 +79,34 @@ export interface Plan {
   createdAt: string;
 }
 
-export interface UserData {
+export interface LearningPath {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  phases: Phase[];
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  description: string;
+  icon?: string;
+  color?: string;
+  createdAt: string;
+  updatedAt: string;
   taskProgress: Record<string, boolean>;
   checkIns: CheckIn[];
   notes: Note[];
   bookmarks: Bookmark[];
   inspirations: Inspiration[];
   plans: Plan[];
+  learningPaths: LearningPath[];
+  activePathId: string | null;
+}
+
+export interface UserData {
+  goals: Goal[];
+  activeGoalId: string | null;
 }
