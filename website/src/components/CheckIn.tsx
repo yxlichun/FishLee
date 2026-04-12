@@ -83,7 +83,7 @@ export default function CheckIn() {
               <div key={plan.id} className="flex items-center gap-3">
                 <button
                   onClick={() => togglePlan(plan.id)}
-                  className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                  className={`flex-shrink-0 w-5 h-5 !min-h-0 rounded border-2 flex items-center justify-center transition-colors ${
                     plan.completed
                       ? 'bg-green-500 border-green-500'
                       : 'border-brand-400 hover:border-green-400 bg-white'

@@ -201,12 +201,12 @@ export default function Plans() {
               <div key={date} className="card !p-0 overflow-hidden">
 
                 <div
-                  className={`w-full flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-3 sm:py-4 transition-colors gap-2 sm:gap-0 ${
+                  className={`w-full flex flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-4 transition-colors gap-2 ${
                     isToday ? 'bg-brand-50' : 'hover:bg-gray-50'
                   }`}
                 >
                   <button
-                    className="flex items-center gap-2 sm:gap-3 flex-1 text-left"
+                    className="flex items-center gap-2 sm:gap-3 flex-1 text-left whitespace-nowrap overflow-hidden"
                     onClick={() => toggleCollapse(date)}
                   >
                     <CalendarDays
@@ -226,7 +226,7 @@ export default function Plans() {
                         已过期
                       </span>
                     )}
-                    <span className="text-xs sm:text-sm text-gray-500">
+                    <span className="text-xs sm:text-sm text-gray-500 truncate">
                       {doneCount}/{group.length} 完成
                     </span>
                     {doneAll && (
@@ -234,21 +234,21 @@ export default function Plans() {
                     )}
                   </button>
 
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
                     {isPast && !isToday && hasUnfinished && (
                       <button
                         onClick={() => {
                           setReschedulingDate(reschedulingDate === date ? null : date);
                           setRescheduleTarget(format(new Date(), 'yyyy-MM-dd'));
                         }}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors whitespace-nowrap"
                         title="将未完成计划延期到新日期"
                       >
                         <CalendarClock size={14} />
                         延期
                       </button>
                     )}
-                    <button onClick={() => toggleCollapse(date)} className="p-1">
+                    <button onClick={() => toggleCollapse(date)} className="p-1 flex-shrink-0">
                       {isCollapsed
                         ? <ChevronDown size={16} className="text-gray-400" />
                         : <ChevronUp   size={16} className="text-gray-400" />
@@ -315,16 +315,18 @@ export default function Plans() {
                           plan.completed ? 'bg-green-50' : 'bg-white'
                         }`}
                       >
-                        <button
-                          onClick={() => togglePlan(plan.id)}
-                          className={`flex-shrink-0 w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center transition-colors ${
-                            plan.completed
-                              ? 'bg-green-500 border-green-500'
-                              : 'border-gray-300 hover:border-green-400'
-                          }`}
-                        >
-                          {plan.completed && <Check size={12} className="text-white" />}
-                        </button>
+                        <div className="flex-shrink-0 mt-0.5">
+                          <button
+                            onClick={() => togglePlan(plan.id)}
+                            className={`w-4 h-4 !min-h-0 rounded-sm border-2 flex items-center justify-center transition-colors ${
+                              plan.completed
+                                ? 'bg-green-500 border-green-500'
+                                : 'border-gray-300 hover:border-green-400'
+                            }`}
+                          >
+                            {plan.completed && <Check size={12} className="text-white" />}
+                          </button>
+                        </div>
 
                         <div className="flex-1 min-w-0">
                           {editingId === plan.id ? (

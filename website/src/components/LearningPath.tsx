@@ -767,7 +767,7 @@ export default function LearningPath() {
                                         type="checkbox"
                                         checked={taskProgress[task.id] || false}
                                         onChange={() => toggleTask(task.id)}
-                                        className="mt-0.5 sm:mt-1 w-4 h-4 text-brand-600 rounded focus:ring-brand-500 flex-shrink-0"
+                                        className="mt-0.5 sm:mt-1 w-4 h-4 text-brand-600 rounded-sm focus:ring-brand-500 flex-shrink-0"
                                       />
                                       <span className={`flex-1 text-xs sm:text-sm ${taskProgress[task.id] ? 'text-gray-500 line-through' : 'text-gray-700'}`}>
                                         {task.text}

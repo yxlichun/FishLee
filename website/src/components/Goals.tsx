@@ -16,7 +16,17 @@ interface DayData {
   goals: Array<{ id: string; title: string; color: string; count: number }>;
 }
 
-function GoalStats({ goal }: { goal: Goal }) {
+function GoalCard({ goal, onClick, navigate }: { goal: Goal; onClick: () => void; navigate: (to: string) => void }) {
+  const colorMap: Record<string, string> = {
+    blue: 'bg-blue-500',
+    green: 'bg-green-500',
+    purple: 'bg-purple-500',
+    orange: 'bg-orange-500',
+    pink: 'bg-pink-500',
+    red: 'bg-red-500',
+  };
+  const bgColor = goal.color ? (colorMap[goal.color] || goal.color) : 'bg-brand-500';
+  
   const totalTasks = goal.learningPaths.reduce(
     (sum, lp) => sum + lp.phases.reduce(
       (s, ph) => s + ph.sections.reduce((t, sec) => t + sec.tasks.length, 0), 0
@@ -28,47 +38,16 @@ function GoalStats({ goal }: { goal: Goal }) {
   const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
-    <div className="flex items-center gap-4 text-sm text-gray-500">
-      <span className="flex items-center gap-1">
-        <Calendar size={14} />
-        {goal.checkIns.length} 次打卡
-      </span>
-      <span className="flex items-center gap-1">
-        <FileText size={14} />
-        {goal.notes.length} 篇笔记
-      </span>
-      {totalTasks > 0 && (
-        <span className="flex items-center gap-1">
-          <BookOpen size={14} />
-          {progressPercent}% 完成
-        </span>
-      )}
-    </div>
-  );
-}
-
-function GoalCard({ goal, onClick }: { goal: Goal; onClick: () => void }) {
-  const colorMap: Record<string, string> = {
-    blue: 'bg-blue-500',
-    green: 'bg-green-500',
-    purple: 'bg-purple-500',
-    orange: 'bg-orange-500',
-    pink: 'bg-pink-500',
-    red: 'bg-red-500',
-  };
-  const bgColor = goal.color ? (colorMap[goal.color] || goal.color) : 'bg-brand-500';
-
-  return (
     <button
       onClick={onClick}
       className="w-full bg-white rounded-xl shadow-sm border border-gray-200 p-5 text-left hover:shadow-md hover:border-gray-300 transition-all duration-200 group"
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0 flex-grow">
           <div className={`w-9 h-9 ${bgColor} rounded-lg flex items-center justify-center text-white flex-shrink-0`}>
             {goal.icon || <Target size={18} />}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-grow">
             <h3 className="font-semibold text-gray-900 group-hover:text-brand-600 transition-colors truncate">
               {goal.title}
             </h3>
@@ -77,9 +56,46 @@ function GoalCard({ goal, onClick }: { goal: Goal; onClick: () => void }) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-4 flex-shrink-0 ml-4">
-          <GoalStats goal={goal} />
-          <ChevronRight size={18} className="text-gray-300 group-hover:text-brand-500 transition-colors" />
+        <div className="flex items-center gap-4 flex-shrink-0 w-full sm:w-auto">
+          <div className="flex flex-wrap gap-3 sm:gap-4 text-sm text-gray-500 w-full sm:w-auto">
+            <span className="flex items-center gap-1 whitespace-nowrap">
+              <Calendar size={14} />
+              {goal.checkIns.length} 次打卡
+            </span>
+            <span className="flex items-center gap-1 whitespace-nowrap">
+              <FileText size={14} />
+              {goal.notes.length} 篇笔记
+            </span>
+            {totalTasks > 0 && (
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <BookOpen size={14} />
+                {progressPercent}% 完成
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 ml-2 sm:ml-4">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/goals/${goal.id}/check-in`);
+              }}
+              className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+              title="打卡"
+            >
+              <Calendar size={16} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/goals/${goal.id}/plans`);
+              }}
+              className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+              title="新增任务"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+          <ChevronRight size={18} className="text-gray-300 group-hover:text-brand-500 transition-colors ml-2 sm:ml-4" />
         </div>
       </div>
     </button>
@@ -341,7 +357,7 @@ export default function Goals() {
         {/* 热力图层 */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-16">
           <div className="w-full overflow-x-auto opacity-40">
-            <div className="relative min-w-[600px] sm:min-w-0">
+            <div className="relative min-w-0">
               <div className="flex gap-0.5">
                 {weeks.map((week, colIdx) => (
                   <div key={colIdx} className="flex-1 flex flex-col gap-0.5">
@@ -452,12 +468,13 @@ export default function Goals() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10 pb-12">
         <div className="space-y-3">
           {goals.map((goal) => (
-            <GoalCard
-              key={goal.id}
-              goal={goal}
-              onClick={() => navigate(`/goals/${goal.id}/dashboard`)}
-            />
-          ))}
+          <GoalCard
+            key={goal.id}
+            goal={goal}
+            onClick={() => navigate(`/goals/${goal.id}/dashboard`)}
+            navigate={navigate}
+          />
+        ))}
 
           <button
             onClick={() => setShowModal(true)}
@@ -488,70 +505,81 @@ export default function Goals() {
           setShowFishPanel(opening);
           if (opening && !aiSummary && !aiLoading) fetchAiSummary();
         }}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-110 transition-all duration-300 z-40"
+        className="fixed bottom-13 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full shadow-xl flex items-center justify-center text-white hover:scale-110 transition-all duration-300 z-40 animate-float"
         title="智能助手"
       >
-        <Fish size={24} />
+        <div className="animate-swim">
+          <Fish size={28} />
+        </div>
       </button>
 
       {/* AI 总结面板 */}
       {showFishPanel && (
-        <div className="fixed bottom-24 right-6 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-40 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-              <Fish size={18} className="text-blue-500" />
+        <div className="fixed bottom-28 left-1/2 transform -translate-x-1/2 w-80 sm:w-96 md:w-[480px] bg-white rounded-2xl shadow-2xl border border-gray-200 z-40 overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Fish size={20} className="text-blue-500" />
               今日学习总结
             </h3>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <button
                 onClick={fetchAiSummary}
                 disabled={aiLoading}
-                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40"
                 title="重新生成"
               >
-                <RefreshCw size={15} className={`text-gray-500 ${aiLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw size={16} className={`text-gray-600 ${aiLoading ? 'animate-spin' : ''}`} />
               </button>
               <button
                 onClick={() => setShowFishPanel(false)}
-                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <X size={15} className="text-gray-500" />
+                <X size={16} className="text-gray-600" />
               </button>
             </div>
           </div>
 
-          <div className="px-5 py-4 max-h-80 overflow-y-auto">
+          <div className="px-6 py-5 max-h-[400px] overflow-y-auto">
             {aiLoading && (
-              <div className="flex items-center justify-center py-8 text-gray-400">
-                <Loader2 size={20} className="animate-spin mr-2" />
-                <span className="text-sm">正在生成总结...</span>
+              <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                <div className="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin mb-4"></div>
+                <p className="text-sm font-medium">正在分析您的学习数据...</p>
+                <p className="text-xs text-gray-400 mt-2">这可能需要几秒钟时间</p>
               </div>
             )}
 
             {aiError && (
-              <div className="text-sm">
-                <p className="text-red-500 mb-3">生成失败：{aiError}</p>
-                <button onClick={fetchAiSummary} className="text-brand-600 hover:text-brand-700 text-sm font-medium">
+              <div className="text-center py-8">
+                <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <X size={20} className="text-red-500" />
+                </div>
+                <p className="text-red-500 mb-3 text-sm font-medium">生成失败：{aiError}</p>
+                <button onClick={fetchAiSummary} className="btn-primary text-sm px-4 py-2">
                   点击重试
                 </button>
               </div>
             )}
 
             {!aiLoading && !aiError && aiSummary && (
-              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {aiSummary}
+              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap space-y-3">
+                {aiSummary.split('\n').map((line, index) => (
+                  <p key={index} className={line.trim() ? '' : 'h-3'}>{line}</p>
+                ))}
               </div>
             )}
 
             {!aiLoading && !aiError && !aiSummary && (
-              <div className="text-center py-8 text-gray-400">
-                <Fish size={32} className="mx-auto mb-2 opacity-40" />
-                <p className="text-sm">点击下方按钮生成今日总结</p>
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Fish size={32} className="text-blue-400" />
+                </div>
+                <p className="text-base font-medium text-gray-700 mb-2">需要智能学习总结吗？</p>
+                <p className="text-sm text-gray-500 mb-6">我会分析您的学习数据，生成今日学习总结和建议</p>
                 <button
                   onClick={fetchAiSummary}
-                  className="mt-3 btn-primary text-sm px-4 py-1.5"
+                  className="btn-primary text-sm px-6 py-2.5"
                 >
-                  生成总结
+                  生成智能总结
                 </button>
               </div>
             )}
