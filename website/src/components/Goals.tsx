@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Target, BookOpen, FileText, Calendar, ChevronRight, X, Fish, Loader2, RefreshCw } from 'lucide-react';
+import { Plus, Target, BookOpen, FileText, Calendar, ChevronRight, X, Fish, RefreshCw } from 'lucide-react';
 import { useStore } from '../store';
 import { Goal } from '../types';
 import { format, addDays, parseISO } from 'date-fns';
