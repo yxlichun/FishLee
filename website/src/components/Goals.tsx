@@ -466,11 +466,10 @@ export default function Goals() {
         )}
       </div>
 
-      {/* 目标列表 */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-3 sm:mt-4 relative z-10 pb-12">
-        {/* 用户信息和退出登录 - 右上角 */}
+      {/* 用户信息和退出登录 - 右上角 */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 flex items-center justify-end gap-3 pt-4 pb-2">
         {currentUser && (
-          <div className="flex items-center justify-end gap-3 mb-4">
+          <>
             <span className="text-xs text-gray-500">{currentUser.username}</span>
             {currentUser.role === 'admin' && (
               <button
@@ -486,8 +485,12 @@ export default function Goals() {
             >
               退出
             </button>
-          </div>
+          </>
         )}
+      </div>
+
+      {/* 目标列表 */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-4 relative z-10 pb-12">
         <div className="space-y-3">
           {goals.map((goal) => (
           <GoalCard
