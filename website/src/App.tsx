@@ -46,8 +46,8 @@ function LegacyRedirect() {
 
 function App() {
   const loadData = useStore((state) => state.loadData);
-  const isLoading = useStore((state) => state.isLoading);
-  const error = useStore((state) => state.error);
+  // const isLoading = useStore((state) => state.isLoading);
+  // const error = useStore((state) => state.error);
 
   useEffect(() => {
     // 先显示本地数据，然后在后台加载远程数据
