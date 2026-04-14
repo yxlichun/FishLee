@@ -432,10 +432,11 @@ export const useStore = create<AppStore>()(
                   },
                   goals: blobData.goals,
                   activeGoalId: blobData.activeGoalId,
+                  users: blobRaw.users || s.users,
                   isLoading: false,
                 }));
               } else {
-                set({ ...blobData, isLoading: false });
+                set({ ...blobData, users: blobRaw.users || get().users, isLoading: false });
               }
 
               // 如果旧格式需要迁移，回写
@@ -463,7 +464,7 @@ export const useStore = create<AppStore>()(
 
         if (isDevelopment) return;
 
-        const { currentUser, goals, activeGoalId } = get();
+        const { currentUser, goals, activeGoalId, users, allUserData } = get();
         
         // 对于助理用户，使用绑定用户的ID保存数据
         let targetUserId = currentUser?.id;
@@ -489,7 +490,7 @@ export const useStore = create<AppStore>()(
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              goals, activeGoalId,
+              goals, activeGoalId, users, allUserData,
               _lastUpdated: now,
             }),
           });
