@@ -329,6 +329,7 @@ export const useStore = create<AppStore>()(
         set((s) => ({
           users: [...s.users, newUser],
         }));
+        await get().saveData();
         return newUser.id;
       },
 
@@ -338,6 +339,7 @@ export const useStore = create<AppStore>()(
           // 如果更新的是当前用户，同步更新 currentUser
           currentUser: s.currentUser?.id === id ? { ...s.currentUser, ...updates } : s.currentUser,
         }));
+        await get().saveData();
       },
 
       deleteUser: async (id) => {
@@ -364,6 +366,7 @@ export const useStore = create<AppStore>()(
           users: newUsers,
           allUserData: newAllUserData,
         });
+        await get().saveData();
       },
 
       bindAssistant: async (assistantId, boundUserId, boundUserPassword) => {
@@ -391,6 +394,7 @@ export const useStore = create<AppStore>()(
           users: s.users.map(u => u.id === assistantId ? { ...u, boundUserId } : u),
         }));
         
+        await get().saveData();
         return true;
       },
 
