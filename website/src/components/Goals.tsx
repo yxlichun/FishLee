@@ -186,8 +186,6 @@ export default function Goals() {
   const goals = useStore((s) => s.goals);
   const addGoal = useStore((s) => s.addGoal);
   const navigate = useNavigate();
-  const currentUser = useStore((s) => s.currentUser);
-  const logout = useStore((s) => s.logout);
   const [showModal, setShowModal] = useState(false);
   const [tooltip, setTooltip] = useState<{ day: DayData; x: number; y: number } | null>(null);
   const [showFishPanel, setShowFishPanel] = useState(false);
@@ -466,31 +464,8 @@ export default function Goals() {
         )}
       </div>
 
-      {/* 用户信息和退出登录 - 右上角 */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 flex items-center justify-end gap-3 pt-4 pb-2">
-        {currentUser && (
-          <>
-            <span className="text-xs text-gray-500">{currentUser.username}</span>
-            {currentUser.role === 'admin' && (
-              <button
-                onClick={() => navigate('/user-management')}
-                className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                用户管理
-              </button>
-            )}
-            <button
-              onClick={() => { logout(); navigate('/login'); }}
-              className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              退出
-            </button>
-          </>
-        )}
-      </div>
-
       {/* 目标列表 */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-4 relative z-10 pb-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-3 sm:mt-4 relative z-10 pb-12">
         <div className="space-y-3">
           {goals.map((goal) => (
           <GoalCard
