@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useParams, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Calendar, FileText, Bookmark, Download, Upload, Lightbulb, ClipboardList, Menu, X, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Calendar, FileText, Bookmark, Download, Upload, Lightbulb, ClipboardList, Menu, X, ArrowLeft, LogOut, Users, Activity } from 'lucide-react';
 import { useStore, useActiveGoal } from '../store';
 
 export default function Layout() {
@@ -9,6 +9,8 @@ export default function Layout() {
   const setActiveGoal = useStore((s) => s.setActiveGoal);
   const exportData = useStore((s) => s.exportData);
   const importData = useStore((s) => s.importData);
+  const logout = useStore((s) => s.logout);
+  const currentUser = useStore((s) => s.currentUser);
   const activeGoal = useActiveGoal();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -62,15 +64,22 @@ export default function Layout() {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col">
+      <aside className="hidden lg:flex w-72 bg-white border-r border-gray-200 flex-col">
         <div className="p-6 border-b border-gray-200">
-          <button
-            onClick={() => navigate('/goals')}
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-600 transition-colors mb-3"
-          >
-            <ArrowLeft size={14} />
-            <span>返回目标列表</span>
-          </button>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/goals')}
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-600 transition-colors"
+              >
+                <ArrowLeft size={14} />
+                <span>返回目标列表</span>
+              </button>
+            </div>
+            {currentUser && (
+              <span className="text-sm text-gray-600">{currentUser.username}</span>
+            )}
+          </div>
           <h1 className="text-xl font-bold text-gray-900">{goalTitle}</h1>
           {goalDescription && <p className="text-sm text-gray-500 mt-1">{goalDescription}</p>}
         </div>
@@ -97,6 +106,20 @@ export default function Layout() {
             <Upload size={16} />
             <span>导入数据</span>
           </button>
+          <button onClick={() => navigate(`${goalId}/operation-logs`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+            <Activity size={16} />
+            <span>操作日志</span>
+          </button>
+          {currentUser && currentUser.role === 'admin' && (
+            <button onClick={() => navigate('/user-management')} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+              <Users size={16} />
+              <span>用户管理</span>
+            </button>
+          )}
+          <button onClick={() => { logout(); navigate('/login'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+            <LogOut size={16} />
+            <span>退出登录</span>
+          </button>
         </div>
       </aside>
 
@@ -115,12 +138,17 @@ export default function Layout() {
               {goalDescription && <p className="text-xs text-gray-500">{goalDescription}</p>}
             </div>
           </div>
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          <div className="flex items-center gap-3">
+            {currentUser && (
+              <span className="text-sm text-gray-600">{currentUser.username}</span>
+            )}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
@@ -148,6 +176,10 @@ export default function Layout() {
               <button onClick={handleImport} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
                 <Upload size={16} />
                 <span>导入数据</span>
+              </button>
+              <button onClick={() => { logout(); navigate('/login'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                <LogOut size={16} />
+                <span>退出登录</span>
               </button>
             </div>
           </div>

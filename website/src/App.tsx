@@ -11,6 +11,9 @@ const Notes = lazy(() => import('./components/Notes'));
 const Resources = lazy(() => import('./components/Resources'));
 const Inspirations = lazy(() => import('./components/Inspirations'));
 const Plans = lazy(() => import('./components/Plans'));
+const OperationLogs = lazy(() => import('./components/OperationLogs'));
+const Login = lazy(() => import('./components/Login'));
+const UserManagement = lazy(() => import('./pages/UserManagement'));
 
 const PageLoading = () => (
   <div className="p-4 flex items-center justify-center h-[80vh]">
@@ -20,6 +23,17 @@ const PageLoading = () => (
     </div>
   </div>
 );
+
+// 受保护的路由组件
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const currentUser = useStore((s) => s.currentUser);
+  
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
 
 // 旧路由兼容重定向：/dashboard → /goals/default-goal/dashboard
 function LegacyRedirect() {
@@ -34,6 +48,7 @@ function App() {
   const loadData = useStore((state) => state.loadData);
   const isLoading = useStore((state) => state.isLoading);
   const error = useStore((state) => state.error);
+  const currentUser = useStore((state) => state.currentUser);
 
   useEffect(() => {
     loadData();
@@ -65,12 +80,30 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/goals" replace />} />
-        <Route path="/goals" element={
+        <Route path="/login" element={
           <Suspense fallback={<PageLoading />}>
-            <Goals />
+            <Login />
           </Suspense>
         } />
-        <Route path="/goals/:goalId" element={<Layout />}>
+        <Route path="/user-management" element={
+          <ProtectedRoute>
+            <Suspense fallback={<PageLoading />}>
+              <UserManagement />
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/goals" element={
+          <ProtectedRoute>
+            <Suspense fallback={<PageLoading />}>
+              <Goals />
+            </Suspense>
+          </ProtectedRoute>
+        } />
+        <Route path="/goals/:goalId" element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<Suspense fallback={<PageLoading />}><Dashboard /></Suspense>} />
           <Route path="learning-path" element={<Suspense fallback={<PageLoading />}><LearningPath /></Suspense>} />
@@ -79,15 +112,16 @@ function App() {
           <Route path="resources" element={<Suspense fallback={<PageLoading />}><Resources /></Suspense>} />
           <Route path="inspirations" element={<Suspense fallback={<PageLoading />}><Inspirations /></Suspense>} />
           <Route path="plans" element={<Suspense fallback={<PageLoading />}><Plans /></Suspense>} />
+          <Route path="operation-logs" element={<Suspense fallback={<PageLoading />}><OperationLogs /></Suspense>} />
         </Route>
         {/* 旧路由兼容 */}
-        <Route path="/dashboard" element={<LegacyRedirect />} />
-        <Route path="/learning-path" element={<LegacyRedirect />} />
-        <Route path="/check-in" element={<LegacyRedirect />} />
-        <Route path="/notes" element={<LegacyRedirect />} />
-        <Route path="/resources" element={<LegacyRedirect />} />
-        <Route path="/inspirations" element={<LegacyRedirect />} />
-        <Route path="/plans" element={<LegacyRedirect />} />
+        <Route path="/dashboard" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+        <Route path="/learning-path" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+        <Route path="/check-in" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+        <Route path="/notes" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+        <Route path="/resources" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+        <Route path="/inspirations" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+        <Route path="/plans" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );

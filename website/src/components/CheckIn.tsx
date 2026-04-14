@@ -216,6 +216,12 @@ export default function CheckIn() {
                           <span className="px-2 py-0.5 sm:py-1 bg-brand-50 text-brand-700 rounded text-xs sm:text-sm">
                             第{checkIn.phaseId}阶段
                           </span>
+                          <span className={`px-2 py-0.5 sm:py-1 rounded text-xs sm:text-sm ${checkIn.checkedByRole === 'assistant' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                            {checkIn.checkedByRole === 'assistant' ? '助理打卡' : '用户打卡'}
+                          </span>
+                          <span className="text-xs sm:text-sm text-gray-400">
+                            {checkIn.checkedByUsername}
+                          </span>
                         </div>
                         <div className="flex gap-2">
                           <button

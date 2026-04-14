@@ -1,17 +1,33 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { UserData, Goal, CheckIn, Note, Bookmark, Inspiration, Plan, LearningPath, Phase, Section, Task, Resource } from './types';
+import { User, UserData, AllUserData, Goal, CheckIn, Note, Bookmark, Inspiration, Plan, LearningPath, Phase, Section, Task, Resource, OperationLog } from './types';
 import { learningPath as builtinPhases } from './data/learningPath';
+
+// 初始化默认用户
+const defaultUser: User = {
+  id: 'user-1',
+  username: 'lichun',
+  password: '1q2w3e4r', // 实际项目中应该加密存储
+  role: 'admin'
+};
 
 const API_URL = import.meta.env.VITE_API_BASE
   ? `${import.meta.env.VITE_API_BASE}/api/data`
   : '/api/data';
 const STORAGE_KEY = 'ai-pm-learning-storage';
-const STORAGE_VERSION = 5;
+const STORAGE_VERSION = 6;
 const isDevelopment = import.meta.env.DEV;
 
 const BUILTIN_PATH_ID = 'builtin-ai-pm-6months';
 const DEFAULT_GOAL_ID = 'default-goal';
+
+// 初始化所有用户数据
+const initialAllUserData: AllUserData = {
+  'user-1': {
+    goals: [makeDefaultGoal()],
+    activeGoalId: DEFAULT_GOAL_ID,
+  },
+};
 
 function makeBuiltinPath(): LearningPath {
   const now = new Date().toISOString();
@@ -154,10 +170,27 @@ function updateActiveGoal(
 
 // ---------- store interface ----------
 
-interface AppStore extends UserData {
+interface AppStore {
+  // 用户相关
+  currentUser: User | null;
+  users: User[];
+  allUserData: AllUserData;
+  
+  // 当前用户数据
+  goals: Goal[];
+  activeGoalId: string | null;
   _lastUpdated: string;
   isLoading: boolean;
   error: string | null;
+  operationLogs: OperationLog[];
+
+  // 用户管理
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  addUser: (user: Omit<User, 'id'>) => Promise<string>;
+  updateUser: (id: string, updates: Partial<User>) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
+  bindAssistant: (assistantId: string, boundUserId: string, boundUserPassword: string) => Promise<boolean>;
 
   loadData: () => Promise<void>;
   saveData: () => Promise<void>;
@@ -171,8 +204,8 @@ interface AppStore extends UserData {
   // scoped to active goal
   toggleTask:       (taskId: string) => Promise<void>;
 
-  addCheckIn:    (c: Omit<CheckIn, 'id' | 'timestamp'>) => Promise<void>;
-  updateCheckIn: (id: string, updates: Partial<Omit<CheckIn, 'id' | 'timestamp'>>) => Promise<void>;
+  addCheckIn:    (c: Omit<CheckIn, 'id' | 'timestamp' | 'checkedBy' | 'checkedByUsername' | 'checkedByRole'>) => Promise<void>;
+  updateCheckIn: (id: string, updates: Partial<Omit<CheckIn, 'id' | 'timestamp' | 'checkedBy' | 'checkedByUsername' | 'checkedByRole'>>) => Promise<void>;
   deleteCheckIn: (id: string) => Promise<void>;
 
   addNote:    (n: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -186,8 +219,8 @@ interface AppStore extends UserData {
   updateInspiration: (id: string, updates: Partial<Inspiration>) => Promise<void>;
   deleteInspiration: (id: string) => Promise<void>;
 
-  addPlan:    (p: Omit<Plan, 'id' | 'createdAt' | 'completed'>) => Promise<void>;
-  updatePlan: (id: string, updates: Partial<Omit<Plan, 'id' | 'createdAt'>>) => Promise<void>;
+  addPlan:    (p: Omit<Plan, 'id' | 'createdAt' | 'completed' | 'createdBy' | 'createdByUsername' | 'createdByRole' | 'completedAt' | 'completedBy' | 'completedByUsername' | 'completedByRole'>) => Promise<void>;
+  updatePlan: (id: string, updates: Partial<Omit<Plan, 'id' | 'createdAt' | 'createdBy' | 'createdByUsername' | 'createdByRole'>>) => Promise<void>;
   deletePlan: (id: string) => Promise<void>;
   togglePlan: (id: string) => Promise<void>;
 
@@ -205,6 +238,8 @@ interface AppStore extends UserData {
   updateSection: (pathId: string, phaseId: number, sectionId: string, updates: Partial<Omit<Section, 'id'>>) => Promise<void>;
   deleteSection: (pathId: string, phaseId: number, sectionId: string) => Promise<void>;
   
+  // operation logging
+  logOperation: (action: string, target: string, targetId: string, details?: Record<string, any>) => void;
   // tasks
   addTask:    (pathId: string, phaseId: number, sectionId: string, task: Omit<Task, 'id'>) => Promise<void>;
   updateTask: (pathId: string, phaseId: number, sectionId: string, taskId: string, updates: Partial<Omit<Task, 'id'>>) => Promise<void>;
@@ -225,14 +260,144 @@ export const useStore = create<AppStore>()(
   persist(
     (set, get) => ({
       // --- state ---
-      goals: [makeDefaultGoal()],
-      activeGoalId: DEFAULT_GOAL_ID,
+      currentUser: null,
+      users: [defaultUser],
+      allUserData: initialAllUserData,
+      goals: [],
+      activeGoalId: null,
       _lastUpdated: '',
       isLoading:    false,
       error:        null,
+      operationLogs: [],
+
+      // --- user management ---
+      login: async (username: string, password: string) => {
+        const { users, allUserData } = get();
+        const user = users.find(u => u.username === username && u.password === password);
+        
+        if (user) {
+          // 确保用户对象包含 role 字段
+          const userWithRole = {
+            ...user,
+            role: user.role || 'user' // 默认角色为普通用户
+          };
+          
+          // 确保 lichun 用户始终是管理员
+          if (userWithRole.username === 'lichun') {
+            userWithRole.role = 'admin';
+          }
+          
+          // 对于助理用户，使用绑定用户的数据
+          let targetUserId = userWithRole.id;
+          if (userWithRole.role === 'assistant' && userWithRole.boundUserId) {
+            targetUserId = userWithRole.boundUserId;
+          }
+          
+          // 确保目标用户数据存在
+          if (!allUserData[targetUserId]) {
+            allUserData[targetUserId] = {
+              goals: [],
+              activeGoalId: null,
+            };
+          }
+          
+          const userData = allUserData[targetUserId];
+          set({
+            currentUser: userWithRole,
+            goals: userData.goals,
+            activeGoalId: userData.activeGoalId,
+          });
+          return true;
+        }
+        return false;
+      },
+      
+      logout: () => {
+        set({
+          currentUser: null,
+          goals: [],
+          activeGoalId: null,
+        });
+      },
+
+      // --- user management ---      
+      addUser: async (user) => {
+        const newUser: User = {
+          ...user,
+          id: `user-${Date.now()}`,
+        };
+        set((s) => ({
+          users: [...s.users, newUser],
+        }));
+        return newUser.id;
+      },
+
+      updateUser: async (id, updates) => {
+        set((s) => ({
+          users: s.users.map(u => u.id === id ? { ...u, ...updates } : u),
+          // 如果更新的是当前用户，同步更新 currentUser
+          currentUser: s.currentUser?.id === id ? { ...s.currentUser, ...updates } : s.currentUser,
+        }));
+      },
+
+      deleteUser: async (id) => {
+        const { currentUser, users, allUserData } = get();
+        
+        // 不能删除当前登录的用户
+        if (currentUser?.id === id) {
+          throw new Error('不能删除当前登录的用户');
+        }
+        
+        // 不能删除管理员用户（如果只有一个管理员）
+        const adminCount = users.filter(u => u.role === 'admin').length;
+        const userToDelete = users.find(u => u.id === id);
+        if (userToDelete?.role === 'admin' && adminCount <= 1) {
+          throw new Error('至少需要保留一个管理员用户');
+        }
+        
+        // 删除用户和其数据
+        const newUsers = users.filter(u => u.id !== id);
+        const newAllUserData = { ...allUserData };
+        delete newAllUserData[id];
+        
+        set({
+          users: newUsers,
+          allUserData: newAllUserData,
+        });
+      },
+
+      bindAssistant: async (assistantId, boundUserId, boundUserPassword) => {
+        const { users } = get();
+        
+        // 验证助理用户是否存在
+        const assistant = users.find(u => u.id === assistantId && u.role === 'assistant');
+        if (!assistant) {
+          throw new Error('助理用户不存在');
+        }
+        
+        // 验证绑定用户是否存在
+        const boundUser = users.find(u => u.id === boundUserId);
+        if (!boundUser) {
+          throw new Error('绑定用户不存在');
+        }
+        
+        // 验证绑定用户密码
+        if (boundUser.password !== boundUserPassword) {
+          throw new Error('绑定用户密码错误');
+        }
+        
+        // 绑定助理用户
+        set((s) => ({
+          users: s.users.map(u => u.id === assistantId ? { ...u, boundUserId } : u),
+        }));
+        
+        return true;
+      },
 
       // --- loadData ---
       loadData: async () => {
+        const { currentUser } = get();
+        
         if (isDevelopment) {
           set({ isLoading: false });
           return;
@@ -250,9 +415,28 @@ export const useStore = create<AppStore>()(
           const localUpdated = get()._lastUpdated;
           const blobUpdated  = blobData._lastUpdated ?? '';
 
+          // 对于助理用户，使用绑定用户的ID加载数据
+          let targetUserId = currentUser?.id;
+          if (currentUser?.role === 'assistant' && currentUser.boundUserId) {
+            targetUserId = currentUser.boundUserId;
+          }
+
           // 只有当 API 返回了有效数据且时间戳更新时，才更新本地数据
           if (hasValidGoals && (!localUpdated || (blobUpdated && blobUpdated > localUpdated))) {
-            set({ ...blobData, isLoading: false });
+            // 如果当前有用户登录，更新该用户的数据
+            if (targetUserId) {
+              set((s) => ({
+                allUserData: {
+                  ...s.allUserData,
+                  [targetUserId]: blobData,
+                },
+                goals: blobData.goals,
+                activeGoalId: blobData.activeGoalId,
+                isLoading: false,
+              }));
+            } else {
+              set({ ...blobData, isLoading: false });
+            }
             // 如果旧格式需要迁移，回写
             if (!blobRaw.goals) {
               await get().saveData();
@@ -277,7 +461,27 @@ export const useStore = create<AppStore>()(
 
         if (isDevelopment) return;
 
-        const { goals, activeGoalId } = get();
+        const { currentUser, goals, activeGoalId, allUserData } = get();
+        
+        // 对于助理用户，使用绑定用户的ID保存数据
+        let targetUserId = currentUser?.id;
+        if (currentUser?.role === 'assistant' && currentUser.boundUserId) {
+          targetUserId = currentUser.boundUserId;
+        }
+        
+        // 更新目标用户的数据
+        if (targetUserId) {
+          set((s) => ({
+            allUserData: {
+              ...s.allUserData,
+              [targetUserId]: {
+                goals,
+                activeGoalId,
+              },
+            },
+          }));
+        }
+        
         try {
           const res = await fetch(API_URL, {
             method:  'POST',
@@ -351,10 +555,24 @@ export const useStore = create<AppStore>()(
 
       // --- checkIns (scoped to active goal) ---
       addCheckIn: async (checkIn) => {
+        const now = new Date().toISOString();
+        const checkInId = `ci-${Date.now()}`;
+        const { currentUser } = get();
         set((s) => updateActiveGoal(s, (g) => ({
           ...g,
-          checkIns: [{ ...checkIn, id: `ci-${Date.now()}`, timestamp: new Date().toISOString() }, ...g.checkIns],
+          checkIns: [{ 
+            ...checkIn, 
+            id: checkInId, 
+            timestamp: now,
+            checkedBy: currentUser?.id || '',
+            checkedByUsername: currentUser?.username || '',
+            checkedByRole: currentUser?.role || '',
+          }, ...g.checkIns],
         })));
+        
+        // 记录操作日志
+        get().logOperation('addCheckIn', 'checkIn', checkInId, { content: checkIn.content });
+        
         await get().saveData();
       },
       updateCheckIn: async (id, updates) => {
@@ -437,13 +655,28 @@ export const useStore = create<AppStore>()(
 
       // --- plans (scoped to active goal) ---
       addPlan: async (plan) => {
+        const now = new Date().toISOString();
+        const planId = `pl-${Date.now()}`;
+        const { currentUser } = get();
         set((s) => updateActiveGoal(s, (g) => ({
           ...g,
           plans: [
             ...g.plans,
-            { ...plan, id: `pl-${Date.now()}`, completed: false, createdAt: new Date().toISOString() },
+            { 
+              ...plan, 
+              id: planId, 
+              completed: false, 
+              createdAt: now,
+              createdBy: currentUser?.id || '',
+              createdByUsername: currentUser?.username || '',
+              createdByRole: currentUser?.role || '',
+            },
           ],
         })));
+        
+        // 记录操作日志
+        get().logOperation('addPlan', 'plan', planId, { date: plan.date, content: plan.content });
+        
         await get().saveData();
       },
       updatePlan: async (id, updates) => {
@@ -461,10 +694,27 @@ export const useStore = create<AppStore>()(
         await get().saveData();
       },
       togglePlan: async (id) => {
+        const now = new Date().toISOString();
+        const { currentUser } = get();
         set((s) => updateActiveGoal(s, (g) => ({
           ...g,
-          plans: g.plans.map((p) => p.id === id ? { ...p, completed: !p.completed } : p),
+          plans: g.plans.map((p) =>
+            p.id === id
+              ? { 
+                  ...p, 
+                  completed: !p.completed, 
+                  completedAt: p.completed ? undefined : now,
+                  completedBy: p.completed ? undefined : currentUser?.id,
+                  completedByUsername: p.completed ? undefined : currentUser?.username,
+                  completedByRole: p.completed ? undefined : currentUser?.role,
+                }
+              : p
+          ),
         })));
+        
+        // 记录操作日志
+        get().logOperation('togglePlan', 'plan', id, { completed: true });
+        
         await get().saveData();
       },
 
@@ -789,10 +1039,55 @@ export const useStore = create<AppStore>()(
         try {
           const raw = JSON.parse(jsonString);
           const data = parseUserData(raw);
-          set(data);
+          const { currentUser } = get();
+          
+          if (currentUser) {
+            // 更新当前用户的数据
+            set((s) => ({
+              allUserData: {
+                ...s.allUserData,
+                [currentUser.id]: data,
+              },
+              goals: data.goals,
+              activeGoalId: data.activeGoalId,
+            }));
+          } else {
+            // 如果没有用户登录，只更新本地状态
+            set({
+              goals: data.goals,
+              activeGoalId: data.activeGoalId,
+            });
+          }
+          
+          // 记录操作日志
+          get().logOperation('importData', 'data', 'all', { goalsCount: data.goals.length });
+          
           await get().saveData();
         } catch (err) {
           console.error('Failed to import data:', err);
+        }
+      },
+
+      // --- operation logging ---
+      logOperation: (action: string, target: string, targetId: string, details?: Record<string, any>) => {
+        const { currentUser } = get();
+        if (currentUser) {
+          set((s) => ({
+            operationLogs: [
+              {
+                id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                userId: currentUser.id,
+                username: currentUser.username,
+                userRole: currentUser.role,
+                action,
+                target,
+                targetId,
+                timestamp: new Date().toISOString(),
+                details,
+              },
+              ...s.operationLogs,
+            ].slice(0, 1000), // 只保留最近1000条日志
+          }));
         }
       },
     }),
@@ -800,7 +1095,10 @@ export const useStore = create<AppStore>()(
       name: STORAGE_KEY,
       version: STORAGE_VERSION,
       partialize: (state) => ({
-        goals:        state.goals,
+        currentUser: state.currentUser,
+        users: state.users,
+        allUserData: state.allUserData,
+        goals: state.goals,
         activeGoalId: state.activeGoalId,
         _lastUpdated: state._lastUpdated,
       }),
@@ -851,6 +1149,24 @@ export const useStore = create<AppStore>()(
             delete persisted.plans;
             delete persisted.learningPaths;
             delete persisted.activePathId;
+          }
+        }
+        // v5→v6: 引入用户管理
+        if (version < 6) {
+          // 初始化用户数据
+          if (!persisted.users) {
+            persisted.users = [defaultUser];
+          }
+          if (!persisted.allUserData) {
+            persisted.allUserData = {
+              'user-1': {
+                goals: persisted.goals || [makeDefaultGoal()],
+                activeGoalId: persisted.activeGoalId || DEFAULT_GOAL_ID,
+              },
+            };
+          }
+          if (!persisted.currentUser) {
+            persisted.currentUser = null;
           }
         }
         return persisted;

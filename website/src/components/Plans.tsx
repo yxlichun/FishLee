@@ -354,11 +354,23 @@ export default function Plans() {
                               </div>
                             </div>
                           ) : (
-                            <p className={`text-sm leading-relaxed break-words ${
-                              plan.completed ? 'line-through text-gray-400' : 'text-gray-800'
-                            }`}>
-                              {plan.content}
-                            </p>
+                            <div>
+                              <p className={`text-sm leading-relaxed break-words ${
+                                plan.completed ? 'line-through text-gray-400' : 'text-gray-800'
+                              }`}>
+                                {plan.content}
+                              </p>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                <span className={`text-xs ${plan.createdByRole === 'assistant' ? 'text-red-600' : 'text-green-600'}`}>
+                                  创建: {plan.createdByUsername} ({plan.createdByRole === 'assistant' ? '助理' : '用户'})
+                                </span>
+                                {plan.completed && plan.completedByUsername && (
+                                  <span className={`text-xs ${plan.completedByRole === 'assistant' ? 'text-red-600' : 'text-green-600'}`}>
+                                    完成: {plan.completedByUsername} ({plan.completedByRole === 'assistant' ? '助理' : '用户'})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </div>
 

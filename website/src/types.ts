@@ -39,6 +39,9 @@ export interface CheckIn {
   content: string;
   duration: number;
   phaseId: number;
+  checkedBy: string; // 打卡用户ID
+  checkedByUsername: string; // 打卡用户名
+  checkedByRole: string; // 打卡用户角色
   planSnapshot?: PlanSnapshot[]; // 打卡时当日计划的快照
 }
 
@@ -77,6 +80,13 @@ export interface Plan {
   content: string;
   completed: boolean;
   createdAt: string;
+  createdBy: string; // 创建用户ID
+  createdByUsername: string; // 创建用户名
+  createdByRole: string; // 创建用户角色
+  completedAt?: string; // 完成时间
+  completedBy?: string; // 完成用户ID
+  completedByUsername?: string; // 完成用户名
+  completedByRole?: string; // 完成用户角色
 }
 
 export interface LearningPath {
@@ -106,7 +116,33 @@ export interface Goal {
   activePathId: string | null;
 }
 
+export type UserRole = 'admin' | 'user' | 'assistant';
+
+export interface User {
+  id: string;
+  username: string;
+  password: string;
+  role: UserRole;
+  boundUserId?: string; // 助理用户绑定的用户ID
+}
+
 export interface UserData {
   goals: Goal[];
   activeGoalId: string | null;
+}
+
+export interface AllUserData {
+  [userId: string]: UserData;
+}
+
+export interface OperationLog {
+  id: string;
+  userId: string;
+  username: string;
+  userRole: string;
+  action: string;
+  target: string;
+  targetId: string;
+  timestamp: string;
+  details?: Record<string, any>;
 }
