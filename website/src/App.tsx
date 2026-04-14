@@ -48,7 +48,6 @@ function App() {
   const loadData = useStore((state) => state.loadData);
   const isLoading = useStore((state) => state.isLoading);
   const error = useStore((state) => state.error);
-  const currentUser = useStore((state) => state.currentUser);
 
   useEffect(() => {
     loadData();

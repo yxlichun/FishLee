@@ -461,7 +461,7 @@ export const useStore = create<AppStore>()(
 
         if (isDevelopment) return;
 
-        const { currentUser, goals, activeGoalId, allUserData } = get();
+        const { currentUser, goals, activeGoalId } = get();
         
         // 对于助理用户，使用绑定用户的ID保存数据
         let targetUserId = currentUser?.id;
