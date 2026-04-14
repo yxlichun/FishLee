@@ -50,30 +50,12 @@ function App() {
   const error = useStore((state) => state.error);
 
   useEffect(() => {
+    // 先显示本地数据，然后在后台加载远程数据
     loadData();
   }, [loadData]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">加载数据中...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">加载失败: {error}</p>
-          <button onClick={loadData} className="btn-primary">重试</button>
-        </div>
-      </div>
-    );
-  }
+  // 不再显示加载界面，直接渲染应用
+  // 如果数据还未加载，会使用默认数据
 
   return (
     <BrowserRouter>

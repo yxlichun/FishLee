@@ -403,7 +403,8 @@ export const useStore = create<AppStore>()(
         const { currentUser } = get();
         
         if (!isDevelopment) {
-          set({ isLoading: true, error: null });
+          // 不再设置 isLoading 为 true，避免阻塞页面渲染
+          set({ error: null });
           try {
             const res = await fetch(API_URL);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -433,10 +434,9 @@ export const useStore = create<AppStore>()(
                   goals: blobData.goals,
                   activeGoalId: blobData.activeGoalId,
                   users: blobRaw.users || s.users,
-                  isLoading: false,
                 }));
               } else {
-                set({ ...blobData, users: blobRaw.users || get().users, isLoading: false });
+                set({ ...blobData, users: blobRaw.users || get().users });
               }
 
               // 如果旧格式需要迁移，回写
@@ -444,7 +444,6 @@ export const useStore = create<AppStore>()(
                 await get().saveData();
               }
             } else {
-              set({ isLoading: false });
               // 如果 API 返回空数据，使用本地默认数据并保存到服务器
               const { goals } = get();
               if (goals.length > 0) {
@@ -452,7 +451,7 @@ export const useStore = create<AppStore>()(
               }
             }
           } catch {
-            set({ isLoading: false });
+            // 静默处理错误，不阻塞页面渲染
           }
         }
       },
