@@ -52,7 +52,7 @@ function GoalCard({ goal, onClick, navigate }: { goal: Goal; onClick: () => void
               {goal.title}
             </h3>
             {goal.description && (
-              <p className="text-sm text-gray-400 mt-0.5 truncate">{goal.description}</p>
+              <p className="text-sm text-gray-400 mt-0.5 line-clamp-2">{goal.description}</p>
             )}
           </div>
         </div>
