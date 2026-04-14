@@ -106,7 +106,7 @@ export default function Layout() {
             <Upload size={16} />
             <span>导入数据</span>
           </button>
-          <button onClick={() => navigate(`${goalId}/operation-logs`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+          <button onClick={() => navigate('operation-logs')} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
             <Activity size={16} />
             <span>操作日志</span>
           </button>

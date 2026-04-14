@@ -398,59 +398,57 @@ export const useStore = create<AppStore>()(
       loadData: async () => {
         const { currentUser } = get();
         
-        if (isDevelopment) {
-          set({ isLoading: false });
-          return;
-        }
+        if (!isDevelopment) {
+          set({ isLoading: true, error: null });
+          try {
+            const res = await fetch(API_URL);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blobRaw = await res.json();
+            const blobData = parseUserData(blobRaw);
 
-        set({ isLoading: true, error: null });
-        try {
-          const res = await fetch(API_URL);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const blobRaw = await res.json();
-          const blobData = parseUserData(blobRaw);
+            // 检查是否有有效的目标数据
+            const hasValidGoals = blobData.goals && blobData.goals.length > 0;
+            const localUpdated = get()._lastUpdated;
+            const blobUpdated  = blobData._lastUpdated ?? '';
 
-          // 检查是否有有效的目标数据
-          const hasValidGoals = blobData.goals && blobData.goals.length > 0;
-          const localUpdated = get()._lastUpdated;
-          const blobUpdated  = blobData._lastUpdated ?? '';
+            // 对于助理用户，使用绑定用户的ID加载数据
+            let targetUserId = currentUser?.id;
+            if (currentUser?.role === 'assistant' && currentUser.boundUserId) {
+              targetUserId = currentUser.boundUserId;
+            }
 
-          // 对于助理用户，使用绑定用户的ID加载数据
-          let targetUserId = currentUser?.id;
-          if (currentUser?.role === 'assistant' && currentUser.boundUserId) {
-            targetUserId = currentUser.boundUserId;
-          }
+            // 只有当 API 返回了有效数据且时间戳更新时，才更新本地数据
+            if (hasValidGoals && (!localUpdated || (blobUpdated && blobUpdated > localUpdated))) {
+              // 如果当前有用户登录，更新该用户的数据
+              if (targetUserId) {
+                set((s) => ({
+                  allUserData: {
+                    ...s.allUserData,
+                    [targetUserId]: blobData,
+                  },
+                  goals: blobData.goals,
+                  activeGoalId: blobData.activeGoalId,
+                  isLoading: false,
+                }));
+              } else {
+                set({ ...blobData, isLoading: false });
+              }
 
-          // 只有当 API 返回了有效数据且时间戳更新时，才更新本地数据
-          if (hasValidGoals && (!localUpdated || (blobUpdated && blobUpdated > localUpdated))) {
-            // 如果当前有用户登录，更新该用户的数据
-            if (targetUserId) {
-              set((s) => ({
-                allUserData: {
-                  ...s.allUserData,
-                  [targetUserId]: blobData,
-                },
-                goals: blobData.goals,
-                activeGoalId: blobData.activeGoalId,
-                isLoading: false,
-              }));
+              // 如果旧格式需要迁移，回写
+              if (!blobRaw.goals) {
+                await get().saveData();
+              }
             } else {
-              set({ ...blobData, isLoading: false });
+              set({ isLoading: false });
+              // 如果 API 返回空数据，使用本地默认数据并保存到服务器
+              const { goals } = get();
+              if (goals.length > 0) {
+                await get().saveData();
+              }
             }
-            // 如果旧格式需要迁移，回写
-            if (!blobRaw.goals) {
-              await get().saveData();
-            }
-          } else {
+          } catch {
             set({ isLoading: false });
-            // 如果 API 返回空数据，使用本地默认数据并保存到服务器
-            const { goals } = get();
-            if (goals.length > 0) {
-              await get().saveData();
-            }
           }
-        } catch {
-          set({ isLoading: false });
         }
       },
 
