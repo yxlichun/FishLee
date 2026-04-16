@@ -9,6 +9,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { TosClient } = require('@volcengine/tos-sdk');
 
 const https = require('https');
@@ -75,20 +76,57 @@ function send(res, status, data) {
   res.end(body);
 }
 
+// 可 gzip 压缩的文本类型
+const COMPRESSIBLE_EXTS = new Set(['.html', '.js', '.css', '.json', '.svg', '.xml', '.txt', '.woff', '.woff2']);
+
 // ---------- 静态文件 ----------
-function serveStatic(res, filePath) {
+function serveStatic(req, res, filePath) {
+  const isIndexHtml = path.basename(filePath) === 'index.html';
+
   if (!fs.existsSync(filePath)) {
     // SPA fallback → index.html
     const html = fs.readFileSync(path.join(DIST_DIR, 'index.html'));
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end(html);
+    const headers = {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache',
+    };
+    const acceptEncoding = req.headers['accept-encoding'] || '';
+    if (acceptEncoding.includes('gzip')) {
+      const compressed = zlib.gzipSync(html);
+      headers['Content-Encoding'] = 'gzip';
+      res.writeHead(200, headers);
+      res.end(compressed);
+    } else {
+      res.writeHead(200, headers);
+      res.end(html);
+    }
     return;
   }
+
   const ext = path.extname(filePath);
   const contentType = MIME[ext] || 'application/octet-stream';
   const content = fs.readFileSync(filePath);
-  res.writeHead(200, { 'Content-Type': contentType });
-  res.end(content);
+
+  const headers = { 'Content-Type': contentType };
+
+  // Cache-Control
+  if (isIndexHtml) {
+    headers['Cache-Control'] = 'no-cache';
+  } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+    headers['Cache-Control'] = 'public, max-age=31536000, immutable';
+  }
+
+  // gzip 压缩（仅文本类型）
+  const acceptEncoding = req.headers['accept-encoding'] || '';
+  if (acceptEncoding.includes('gzip') && COMPRESSIBLE_EXTS.has(ext)) {
+    const compressed = zlib.gzipSync(content);
+    headers['Content-Encoding'] = 'gzip';
+    res.writeHead(200, headers);
+    res.end(compressed);
+  } else {
+    res.writeHead(200, headers);
+    res.end(content);
+  }
 }
 
 // ---------- 服务器 ----------
@@ -194,7 +232,7 @@ const server = http.createServer(async (req, res) => {
 
     // ── 静态文件 ──
     const filePath = path.join(DIST_DIR, urlPath === '/' ? 'index.html' : urlPath);
-    serveStatic(res, filePath);
+    serveStatic(req, res, filePath);
 
   } catch (err) {
     console.error(err);
