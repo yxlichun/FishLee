@@ -141,11 +141,42 @@ const server = http.createServer(async (req, res) => {
   if (method === 'OPTIONS') { res.writeHead(200).end(); return; }
 
   try {
+    // ── POST /api/login ──
+    // 服务端校验密码，返回脱敏用户对象（不含 password）
+    if (method === 'POST' && urlPath === '/api/login') {
+      const buf = await readBody(req);
+      const { username, password } = JSON.parse(buf.toString('utf-8'));
+      if (!username || !password) {
+        send(res, 400, { error: '缺少用户名或密码' });
+        return;
+      }
+      const raw = await tosGet(DATA_KEY);
+      const data = raw ? JSON.parse(raw) : {};
+      const users = data.users || [];
+      const user = users.find(u => u.username === username && u.password === password);
+      if (!user) {
+        send(res, 401, { error: '用户名或密码错误' });
+        return;
+      }
+      // 返回脱敏用户（去掉 password 字段）
+      const { password: _pw, ...safeUser } = user;
+      send(res, 200, { user: safeUser });
+      return;
+    }
+
     // ── GET /api/data ──
     if (method === 'GET' && urlPath === '/api/data') {
       const raw = await tosGet(DATA_KEY);
-      if (raw) { send(res, 200, raw); }
-      else { send(res, 200, { goals: [], activeGoalId: null }); }
+      if (raw) {
+        // 去掉 users 里的 password 字段后再返回给前端
+        const data = JSON.parse(raw);
+        if (data.users) {
+          data.users = data.users.map(({ password: _pw, ...u }) => u);
+        }
+        send(res, 200, JSON.stringify(data));
+      } else {
+        send(res, 200, { goals: [], activeGoalId: null });
+      }
       return;
     }
 

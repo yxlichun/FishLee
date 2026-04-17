@@ -3,31 +3,27 @@ import { persist } from 'zustand/middleware';
 import { User, UserData, AllUserData, Goal, CheckIn, Note, Bookmark, Inspiration, Plan, LearningPath, Phase, Section, Task, Resource, OperationLog } from './types';
 import { learningPath as builtinPhases } from './data/learningPath';
 
-// 初始化默认用户
-const defaultUser: User = {
+// 仅在 API_ENABLED=false 的纯本地开发模式下作为登录 fallback 使用。
+// 生产环境密码校验在服务端（POST /api/login），此处不生效。
+const devFallbackUser: User = {
   id: 'user-1',
   username: 'lichun',
-  password: '1q2w3e4r', // 实际项目中应该加密存储
-  role: 'admin'
+  password: '1q2w3e4r',
+  role: 'admin',
 };
 
-const API_URL = import.meta.env.VITE_API_BASE
-  ? `${import.meta.env.VITE_API_BASE}/api/data`
-  : '/api/data';
+const API_BASE = import.meta.env.VITE_API_BASE || '';
+const API_URL = `${API_BASE}/api/data`;
+const LOGIN_URL = `${API_BASE}/api/login`;
 const STORAGE_KEY = 'ai-pm-learning-storage';
 const STORAGE_VERSION = 6;
-const isDevelopment = import.meta.env.DEV;
+// 通过 VITE_API_ENABLED 显式控制是否走远程 API。
+// 开发时在 .env.development 里设置 VITE_API_ENABLED=true 并配置 VITE_API_BASE
+// 即可让开发环境与生产环境保持一致的存储行为。
+const API_ENABLED = import.meta.env.VITE_API_ENABLED === 'true';
 
 const BUILTIN_PATH_ID = 'builtin-ai-pm-6months';
 const DEFAULT_GOAL_ID = 'default-goal';
-
-// 初始化所有用户数据
-const initialAllUserData: AllUserData = {
-  'user-1': {
-    goals: [makeDefaultGoal()],
-    activeGoalId: DEFAULT_GOAL_ID,
-  },
-};
 
 function makeBuiltinPath(): LearningPath {
   const now = new Date().toISOString();
@@ -261,8 +257,8 @@ export const useStore = create<AppStore>()(
     (set, get) => ({
       // --- state ---
       currentUser: null,
-      users: [defaultUser],
-      allUserData: initialAllUserData,
+      users: [devFallbackUser],
+      allUserData: {},
       goals: [],
       activeGoalId: null,
       _lastUpdated: '',
@@ -272,44 +268,47 @@ export const useStore = create<AppStore>()(
 
       // --- user management ---
       login: async (username: string, password: string) => {
-        const { users, allUserData } = get();
-        const user = users.find(u => u.username === username && u.password === password);
-        
-        if (user) {
-          // 确保用户对象包含 role 字段
-          const userWithRole = {
-            ...user,
-            role: user.role || 'user' // 默认角色为普通用户
-          };
-          
-          // 确保 lichun 用户始终是管理员
-          if (userWithRole.username === 'lichun') {
-            userWithRole.role = 'admin';
+        const { allUserData } = get();
+
+        let user: User | undefined;
+
+        if (API_ENABLED) {
+          // 生产/联调：服务端校验，返回脱敏用户（无 password 字段）
+          try {
+            const res = await fetch(LOGIN_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username, password }),
+            });
+            if (!res.ok) return false;
+            const { user: serverUser } = await res.json();
+            user = serverUser as User;
+          } catch {
+            return false;
           }
-          
-          // 对于助理用户，使用绑定用户的数据
-          let targetUserId = userWithRole.id;
-          if (userWithRole.role === 'assistant' && userWithRole.boundUserId) {
-            targetUserId = userWithRole.boundUserId;
-          }
-          
-          // 确保目标用户数据存在
-          if (!allUserData[targetUserId]) {
-            allUserData[targetUserId] = {
-              goals: [],
-              activeGoalId: null,
-            };
-          }
-          
-          const userData = allUserData[targetUserId];
-          set({
-            currentUser: userWithRole,
-            goals: userData.goals,
-            activeGoalId: userData.activeGoalId,
-          });
-          return true;
+        } else {
+          // 纯本地开发（API_ENABLED=false）：从本地 users 比对
+          user = get().users.find(u => u.username === username && u.password === password);
         }
-        return false;
+
+        if (!user) return false;
+
+        // 确保 lichun 用户始终是管理员
+        if (user.username === 'lichun') user = { ...user, role: 'admin' };
+
+        // 对于助理用户，使用绑定用户的数据
+        const targetUserId = user.role === 'assistant' && user.boundUserId
+          ? user.boundUserId
+          : user.id;
+
+        const userData = allUserData[targetUserId] ?? { goals: [], activeGoalId: null };
+
+        set({
+          currentUser: user,
+          goals: userData.goals,
+          activeGoalId: userData.activeGoalId,
+        });
+        return true;
       },
       
       logout: () => {
@@ -401,58 +400,62 @@ export const useStore = create<AppStore>()(
       // --- loadData ---
       loadData: async () => {
         const { currentUser } = get();
-        
-        if (!isDevelopment) {
-          // 不再设置 isLoading 为 true，避免阻塞页面渲染
-          set({ error: null });
-          try {
-            const res = await fetch(API_URL);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const blobRaw = await res.json();
-            const blobData = parseUserData(blobRaw);
 
-            // 检查是否有有效的目标数据
-            const hasValidGoals = blobData.goals && blobData.goals.length > 0;
-            const localUpdated = get()._lastUpdated;
-            const blobUpdated  = blobData._lastUpdated ?? '';
+        if (!API_ENABLED) return;
 
-            // 对于助理用户，使用绑定用户的ID加载数据
-            let targetUserId = currentUser?.id;
-            if (currentUser?.role === 'assistant' && currentUser.boundUserId) {
-              targetUserId = currentUser.boundUserId;
-            }
+        set({ error: null });
+        try {
+          const res = await fetch(API_URL);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const blobRaw = await res.json();
+          const blobData = parseUserData(blobRaw);
 
-            // 只有当 API 返回了有效数据且时间戳更新时，才更新本地数据
-            if (hasValidGoals && (!localUpdated || (blobUpdated && blobUpdated > localUpdated))) {
-              // 如果当前有用户登录，更新该用户的数据
-              if (targetUserId) {
-                set((s) => ({
+          // 检查是否有有效的目标数据
+          const hasValidGoals = blobData.goals && blobData.goals.length > 0;
+          const localUpdated = get()._lastUpdated;
+          const blobUpdated  = blobData._lastUpdated ?? '';
+
+          // 对于助理用户，使用绑定用户的ID加载数据
+          let targetUserId = currentUser?.id;
+          if (currentUser?.role === 'assistant' && currentUser.boundUserId) {
+            targetUserId = currentUser.boundUserId;
+          }
+
+          // 只有当 API 返回了有效数据且时间戳更新时，才更新本地数据
+          if (hasValidGoals && (!localUpdated || (blobUpdated && blobUpdated > localUpdated))) {
+            // 如果当前有用户登录，更新该用户的数据
+            if (targetUserId) {
+              set((s) => {
+                // 若当前 activeGoalId 在新拉取的 goals 里存在，保留它（用户正在操作中）
+                // 否则使用服务端的 activeGoalId（新浏览器/本地数据失效的情况）
+                const currentIdValid = blobData.goals.some(g => g.id === s.activeGoalId);
+                return {
                   allUserData: {
                     ...s.allUserData,
                     [targetUserId]: blobData,
                   },
                   goals: blobData.goals,
-                  activeGoalId: blobData.activeGoalId,
+                  activeGoalId: currentIdValid ? s.activeGoalId : blobData.activeGoalId,
                   users: blobRaw.users || s.users,
-                }));
-              } else {
-                set({ ...blobData, users: blobRaw.users || get().users });
-              }
-
-              // 如果旧格式需要迁移，回写
-              if (!blobRaw.goals) {
-                await get().saveData();
-              }
+                };
+              });
             } else {
-              // 如果 API 返回空数据，使用本地默认数据并保存到服务器
-              const { goals } = get();
-              if (goals.length > 0) {
-                await get().saveData();
-              }
+              set({ ...blobData, users: blobRaw.users || get().users });
             }
-          } catch {
-            // 静默处理错误，不阻塞页面渲染
+
+            // 如果旧格式需要迁移，回写
+            if (!blobRaw.goals) {
+              await get().saveData();
+            }
+          } else {
+            // 如果 API 返回空数据，使用本地默认数据并保存到服务器
+            const { goals } = get();
+            if (goals.length > 0) {
+              await get().saveData();
+            }
           }
+        } catch {
+          // 静默处理错误，不阻塞页面渲染
         }
       },
 
@@ -461,7 +464,7 @@ export const useStore = create<AppStore>()(
         const now = new Date().toISOString();
         set({ _lastUpdated: now });
 
-        if (isDevelopment) return;
+        if (!API_ENABLED) return;
 
         const { currentUser, goals, activeGoalId, users, allUserData } = get();
         
@@ -1157,7 +1160,7 @@ export const useStore = create<AppStore>()(
         if (version < 6) {
           // 初始化用户数据
           if (!persisted.users) {
-            persisted.users = [defaultUser];
+            persisted.users = [devFallbackUser];
           }
           if (!persisted.allUserData) {
             persisted.allUserData = {

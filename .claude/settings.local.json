@@ -29,7 +29,9 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/goals)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/goals/default-goal/dashboard)",
-      "Bash(pkill -f \"vite --port 5173\")"
+      "Bash(pkill -f \"vite --port 5173\")",
+      "Bash(ls /Users/sftc/Documents/code/FishLee/website/.env*)",
+      "Bash(cat /Users/sftc/Documents/code/FishLee/website/.env*)"
     ]
   }
 }

@@ -113,15 +113,33 @@ FishLee/
 | 层 | 技术 | 用途 |
 |---|------|------|
 | 远程 | 火山云 TOS（`@volcengine/tos-sdk`） | 生产环境持久化，数据文件 `ai-pm-data.json` |
-| 本地 | Zustand `persist` → localStorage | 开发环境持久化 + 生产环境缓存 |
+| 本地 | Zustand `persist` → localStorage | 生产环境缓存 + 本地开发（API 禁用时）|
+
+### 环境控制（⚠️ 关键）
+
+存储行为由 **`VITE_API_ENABLED`** 环境变量控制，**不再使用 `import.meta.env.DEV`**：
+
+| 文件 | `VITE_API_ENABLED` | 说明 |
+|------|--------------------|------|
+| `.env.production` | `true` | 生产构建，始终走 API |
+| `.env.development` | `false`（默认） | 纯前端开发，只用 localStorage |
+| `.env.development`（手动改） | `true` + 配 `VITE_API_BASE=http://localhost:3000` | 联调远程存储时启用 |
+
+**绝不能用 `isDevelopment` / `import.meta.env.DEV` 来区分存储行为**，否则开发和生产会产生不可复现的数据 gap。
+
+### 认证架构（⚠️ 关键）
+
+- **`POST /api/login`（服务端）**：密码校验在服务端，返回脱敏用户对象（不含 `password` 字段）
+- **`GET /api/data`（服务端）**：返回数据时自动抹掉 `users[].password`，密码永远不出现在前端网络响应里
+- **`devFallbackUser`（前端）**：仅在 `API_ENABLED=false` 的纯本地开发模式下作登录 fallback，生产环境不生效
+- **禁止**在前端 store 里做密码明文比对（`API_ENABLED=true` 时完全走服务端 `/api/login`）
 
 ### 核心机制
 
-- `isDevelopment`（`import.meta.env.DEV`）区分环境
-  - **开发**：`saveData()` 只写 localStorage（persist 自动），不调 API
-  - **生产**：`saveData()` 先 `set({ _lastUpdated })`，再 POST 到 TOS
-- `loadData()` 对比 localStorage 和 TOS 的 `_lastUpdated` 时间戳，取较新的
-- API 失败时静默降级，保留 localStorage 数据
+- `loadData()` 从 TOS 拉取数据，对比 `_lastUpdated` 时间戳，**只在服务端数据更新时才覆盖本地**
+- `loadData()` 更新 `activeGoalId` 时，若当前 id 在新拉取的 goals 里存在则保留（避免覆盖用户正在操作的目标）；否则使用服务端值（新浏览器首次登录）
+- `saveData()` 写入 TOS，同时通过 `persist` 自动同步 localStorage
+- API 失败时静默降级，保留 localStorage 数据，不阻塞页面渲染
 
 ### ⚠️ 新增数据字段检查清单
 
@@ -129,22 +147,23 @@ FishLee/
 
 **新增 Goal 级字段时必须在以下 7 个位置全部添加，缺一不可：**
 
-1. `types.ts` — `UserData` 接口
-2. `store.ts` — 初始 state 默认值
+1. `types.ts` — `Goal` 接口
+2. `store.ts` — `makeDefaultGoal()` 返回值
 3. `store.ts` — `saveData()` 的 `JSON.stringify` body
-4. `store.ts` — `loadData()` 的 `parseUserData()` 函数
+4. `store.ts` — `parseGoal()` 函数（补齐缺失字段）
 5. `store.ts` — `partialize` 配置（控制 localStorage 持久化哪些字段）
 6. `store.ts` — `exportData()` 的导出对象
 7. `store.ts` — `migrate()` 函数（为旧版本 localStorage 补充新字段默认值，并升级 `STORAGE_VERSION`）
 
-遗漏任一位置都会导致数据丢失。`parseUserData()` 已统一处理字段缺失，新增字段加一行 `newField: raw.newField || defaultValue` 即可。
+遗漏任一位置都会导致数据丢失。`parseGoal()` 已统一处理字段缺失，新增字段加一行 `newField: raw.newField || defaultValue` 即可。
 
 ### API 端点
 
 API 由 `server/index.js` 提供，运行在火山云轻量服务器上（pm2 管理）：
 
-- `GET /api/data` — 从 TOS 读取全量 JSON（`ai-pm-data.json`）
-- `POST /api/data` — 全量覆写 TOS 中的 JSON
+- `POST /api/login` — 服务端校验用户名密码，返回脱敏用户对象（无 `password`）
+- `GET /api/data` — 从 TOS 读取全量 JSON（`ai-pm-data.json`），返回前自动抹掉 `users[].password`
+- `POST /api/data` — 全量覆写 TOS 中的 JSON（含带密码的 users，服务端存储）
 - `POST /api/upload` — 图片上传到 TOS `notes-images/` 目录，返回 `{ url }`
 
 ### 部署
@@ -171,7 +190,7 @@ Inspiration { id, content, color, tags[], createdAt }
 - ID 生成规则：`{前缀}-${Date.now()}`，前缀如 `goal-`、`pl-`、`ci-`、`n-`、`bm-`、`ins-`
 - CheckIn 旧数据可能只有 `date` 字段，`migrateCheckIns()` 自动转为 `timestamp`
 - 组件通过 `useGoalData(g => g.checkIns)` 选择器获取当前目标的数据，通过 `useStore()` 获取 action
-- `STORAGE_VERSION = 5`，v4→v5 迁移将扁平数据包装进 `goals[0]`
+- `STORAGE_VERSION = 6`，v5→v6 迁移引入用户管理（`users`、`allUserData`、`currentUser`）
 
 ## 样式约定
 
