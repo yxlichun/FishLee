@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import { useStore } from './store';
@@ -45,17 +45,8 @@ function LegacyRedirect() {
 }
 
 function App() {
-  const loadData = useStore((state) => state.loadData);
-  // const isLoading = useStore((state) => state.isLoading);
-  // const error = useStore((state) => state.error);
-
-  useEffect(() => {
-    // 先显示本地数据，然后在后台加载远程数据
-    loadData();
-  }, [loadData]);
-
-  // 不再显示加载界面，直接渲染应用
-  // 如果数据还未加载，会使用默认数据
+  // loadData 已移入 login() 流程，登录时自动拉取最新数据
+  // App 层不再重复触发，避免未登录状态下的无效请求
 
   return (
     <BrowserRouter>

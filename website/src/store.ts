@@ -301,13 +301,17 @@ export const useStore = create<AppStore>()(
           ? user.boundUserId
           : user.id;
 
-        const userData = allUserData[targetUserId] ?? { goals: [], activeGoalId: null };
-
+        // 先用本地缓存（allUserData）快速渲染，避免白屏
+        const cachedData = allUserData[targetUserId];
         set({
           currentUser: user,
-          goals: userData.goals,
-          activeGoalId: userData.activeGoalId,
+          goals: cachedData?.goals ?? [],
+          activeGoalId: cachedData?.activeGoalId ?? null,
         });
+
+        // 登录后立即拉取最新远程数据（loadData 内部会用 currentUser 做 targetUserId 定位）
+        await get().loadData();
+
         return true;
       },
       
