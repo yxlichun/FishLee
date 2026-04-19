@@ -440,11 +440,10 @@ export const useStore = create<AppStore>()(
                   },
                   goals: blobData.goals,
                   activeGoalId: currentIdValid ? s.activeGoalId : blobData.activeGoalId,
-                  users: blobRaw.users || s.users,
                 };
               });
             } else {
-              set({ ...blobData, users: blobRaw.users || get().users });
+              set({ ...blobData });
             }
 
             // 如果旧格式需要迁移，回写
