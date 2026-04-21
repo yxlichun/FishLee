@@ -153,10 +153,22 @@ const server = http.createServer(async (req, res) => {
       const raw = await tosGet(DATA_KEY);
       const data = raw ? JSON.parse(raw) : {};
       const users = data.users || [];
-      const user = users.find(u => u.username === username && u.password === password);
+      // 若 TOS 里的用户密码已丢失，用此 fallback 密码恢复
+      const adminFallbackPwd = process.env.ADMIN_PASSWORD || '1q2w3e4r';
+      const user = users.find(u => {
+        if (u.username !== username) return false;
+        if (u.password) return u.password === password;
+        // 密码字段已丢失，允许用环境变量配置的恢复密码登录
+        return adminFallbackPwd && adminFallbackPwd === password;
+      });
       if (!user) {
         send(res, 401, { error: '用户名或密码错误' });
         return;
+      }
+      // 若密码已丢失且通过 fallback 登录成功，立即把密码写回 TOS
+      if (!user.password && adminFallbackPwd && adminFallbackPwd === password) {
+        data.users = users.map(u => u.username === username ? { ...u, password } : u);
+        await tosPut(DATA_KEY, JSON.stringify(data), 'application/json');
       }
       // 返回脱敏用户（去掉 password 字段）
       const { password: _pw, ...safeUser } = user;
@@ -183,9 +195,25 @@ const server = http.createServer(async (req, res) => {
     // ── POST /api/data ──
     if (method === 'POST' && urlPath === '/api/data') {
       const buf = await readBody(req);
-      const str = buf.toString('utf-8');
-      JSON.parse(str); // 验证 JSON
-      await tosPut(DATA_KEY, str, 'application/json');
+      const incoming = JSON.parse(buf.toString('utf-8')); // 验证 JSON
+
+      // 保护密码：如果前端发来的 users 里缺少 password，用服务端已有的密码补回
+      if (incoming.users && Array.isArray(incoming.users)) {
+        const existing = await tosGet(DATA_KEY);
+        if (existing) {
+          const existingData = JSON.parse(existing);
+          const existingUsersMap = {};
+          (existingData.users || []).forEach(u => { existingUsersMap[u.id] = u; });
+          incoming.users = incoming.users.map(u => {
+            if (!u.password && existingUsersMap[u.id]?.password) {
+              return { ...u, password: existingUsersMap[u.id].password };
+            }
+            return u;
+          });
+        }
+      }
+
+      await tosPut(DATA_KEY, JSON.stringify(incoming), 'application/json');
       send(res, 200, { success: true });
       return;
     }
