@@ -185,6 +185,7 @@ function AddGoalModal({ onClose, onAdd }: {
 export default function Goals() {
   const goals = useStore((s) => s.goals);
   const addGoal = useStore((s) => s.addGoal);
+  const loadData = useStore((s) => s.loadData);
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [tooltip, setTooltip] = useState<{ day: DayData; x: number; y: number } | null>(null);
@@ -192,6 +193,7 @@ export default function Goals() {
   const [aiSummary, setAiSummary] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const AI_URL = import.meta.env.VITE_API_BASE
     ? `${import.meta.env.VITE_API_BASE}/api/ai/summary`
@@ -466,6 +468,21 @@ export default function Goals() {
 
       {/* 目标列表 */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-3 sm:mt-4 relative z-10 pb-12">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-gray-900">我的目标</h2>
+          <button
+            onClick={async () => {
+              setRefreshing(true);
+              await loadData();
+              setRefreshing(false);
+            }}
+            disabled={refreshing}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+            title="刷新数据"
+          >
+            <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+          </button>
+        </div>
         <div className="space-y-3">
           {goals.map((goal) => (
           <GoalCard
