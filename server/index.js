@@ -1,16 +1,16 @@
 /**
- * Lighthouse Node.js 服务器（火山云 TOS 版本）
+ * Ankor Node.js 服务器（腾讯云 COS 版本）
  * - 静态文件服务（前端 dist/）
- * - GET  /api/data    读 TOS
- * - POST /api/data    写 TOS
- * - POST /api/upload  图片上传 TOS
+ * - GET  /api/data    读 COS
+ * - POST /api/data    写 COS
+ * - POST /api/upload  图片上传 COS
  */
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
-const { TosClient } = require('@volcengine/tos-sdk');
+const COS = require('cos-nodejs-sdk-v5');
 
 const https = require('https');
 
@@ -21,13 +21,12 @@ const DIST_DIR = path.join(__dirname, 'dist');
 const ARK_API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
 const ARK_API_KEY = process.env.ARK_API_KEY || '';
 
-const tos = new TosClient({
-  accessKeyId: process.env.TOS_ACCESS_KEY_ID,
-  accessKeySecret: process.env.TOS_SECRET_ACCESS_KEY,
-  region: process.env.TOS_REGION,
-  endpoint: process.env.TOS_ENDPOINT,
+const cos = new COS({
+  SecretId: process.env.COS_SECRET_ID,
+  SecretKey: process.env.COS_SECRET_KEY,
 });
-const Bucket = process.env.TOS_BUCKET;
+const Bucket = process.env.COS_BUCKET;
+const Region = process.env.COS_REGION;
 const DATA_KEY = 'ai-pm-data.json';
 
 // ---------- MIME ----------
@@ -46,19 +45,26 @@ const MIME = {
   '.ttf':  'font/ttf',
 };
 
-// ---------- TOS helpers ----------
+// ---------- COS helpers ----------
 async function tosGet(key) {
-  try {
-    const result = await tos.getObject({ bucket: Bucket, key });
-    return Buffer.from(result.data).toString('utf-8');
-  } catch (err) {
-    if (err.code === 'NoSuchKey' || err.statusCode === 404) return null;
-    throw err;
-  }
+  return new Promise((resolve, reject) => {
+    cos.getObject({ Bucket, Region, Key: key }, (err, data) => {
+      if (err) {
+        if (err.statusCode === 404) return resolve(null);
+        return reject(err);
+      }
+      resolve(data.Body.toString('utf-8'));
+    });
+  });
 }
 
 async function tosPut(key, body, contentType) {
-  await tos.putObject({ bucket: Bucket, key, body, contentType });
+  return new Promise((resolve, reject) => {
+    cos.putObject({ Bucket, Region, Key: key, Body: body, ContentType: contentType }, (err) => {
+      if (err) return reject(err);
+      resolve();
+    });
+  });
 }
 
 function readBody(req) {
@@ -225,7 +231,7 @@ const server = http.createServer(async (req, res) => {
       const buf = await readBody(req);
       const key = `notes-images/${Date.now()}-${rawFilename}`;
       await tosPut(key, buf, contentType);
-      const url = `https://${Bucket}.tos-${process.env.TOS_REGION}.volces.com/${key}`;
+      const url = `https://${Bucket}.cos.${Region}.myqcloud.com/${key}`;
       send(res, 200, { url });
       return;
     }

@@ -6,6 +6,6 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "@volcengine/tos-sdk": "^2.7.0"
+    "cos-nodejs-sdk-v5": "^2.14.0"
   }
 }
